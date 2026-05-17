@@ -1,18 +1,14 @@
 // src/App.tsx — Dani AI (Claude-style UI)
-// Sidebar kiri permanen di desktop, drawer di mobile
-// History terintegrasi di sidebar
 import {useState, useEffect, useRef, useCallback} from "react";
 import {useChat} from "./hooks/useChat";
 import {useTimer} from "./hooks/useTimer";
 import {MessageBubble} from "./components/MessageBubble";
 import {PROFILES, SHORTCUTS} from "./lib/profiles";
 import {checkHealth} from "./lib/api";
-import {AuthButton} from "./components/AuthButton";
 import {supabase} from "./lib/supabase";
 import type {ProfileKey} from "./types";
 import "./App.css";
 
-// ===================== THEMES =====================
 const THEMES = [
     {id: "midnight", label: "Midnight", color: "#cc785c"},
     {id: "forest", label: "Forest", color: "#3ddc84"},
@@ -30,9 +26,6 @@ const THEMES = [
     {id: "void", label: "Void", color: "#ffffff"},
 ];
 
-// ===================== HISTORY MOCK (ganti dengan data real dari Supabase) =====================
-// Struktur history dari Supabase: { id, title, created_at, messages[] }
-// Group berdasarkan tanggal (Today, Yesterday, Last 7 Days, dst)
 function groupHistoryByDate(items: HistoryItem[]) {
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -42,25 +35,22 @@ function groupHistoryByDate(items: HistoryItem[]) {
     lastWeek.setDate(today.getDate() - 7);
     const lastMonth = new Date(today);
     lastMonth.setDate(today.getDate() - 30);
-
     const groups: Record<string, HistoryItem[]> = {
-        Today: [],
-        Yesterday: [],
-        "Last 7 Days": [],
-        "Last 30 Days": [],
-        Older: [],
+        "Hari ini": [],
+        Kemarin: [],
+        "7 Hari Lalu": [],
+        "30 Hari Lalu": [],
+        "Lebih Lama": [],
     };
-
     for (const item of items) {
         const d = new Date(item.created_at);
         const day = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-        if (day >= today) groups["Today"].push(item);
-        else if (day >= yesterday) groups["Yesterday"].push(item);
-        else if (day >= lastWeek) groups["Last 7 Days"].push(item);
-        else if (day >= lastMonth) groups["Last 30 Days"].push(item);
-        else groups["Older"].push(item);
+        if (day >= today) groups["Hari ini"].push(item);
+        else if (day >= yesterday) groups["Kemarin"].push(item);
+        else if (day >= lastWeek) groups["7 Hari Lalu"].push(item);
+        else if (day >= lastMonth) groups["30 Hari Lalu"].push(item);
+        else groups["Lebih Lama"].push(item);
     }
-
     return Object.entries(groups).filter(([, items]) => items.length > 0);
 }
 
@@ -70,8 +60,14 @@ interface HistoryItem {
     created_at: string;
     profile?: string;
 }
+interface UserProfile {
+    id: string;
+    email: string;
+    full_name?: string;
+    avatar_url?: string;
+    created_at?: string;
+}
 
-// ===================== HOOKS =====================
 function useTheme() {
     const [theme, setTheme] = useState(() => {
         try {
@@ -81,60 +77,160 @@ function useTheme() {
         }
     });
     const [pickerOpen, setPickerOpen] = useState(false);
-
     useEffect(() => {
         document.documentElement.setAttribute("data-theme", theme);
         try {
             localStorage.setItem("dani-theme", theme);
         } catch {}
     }, [theme]);
-
     return {theme, setTheme, pickerOpen, setPickerOpen};
 }
 
 function useHistory(userToken: string | null) {
     const [history, setHistory] = useState<HistoryItem[]>([]);
     const [loading, setLoading] = useState(false);
-
     const loadHistory = useCallback(async () => {
         if (!userToken) return;
         setLoading(true);
         try {
-            // Ganti ini dengan query Supabase yang sesuai schema-mu
-            // Contoh: SELECT id, title, created_at, profile FROM chat_sessions ORDER BY created_at DESC
             const {data, error} = await supabase
             .from("chat_sessions")
             .select("id, title, created_at, profile")
             .order("created_at", {ascending: false})
             .limit(100);
-
-            if (!error && data) {
-                setHistory(data as HistoryItem[]);
-            }
+            if (!error && data) setHistory(data as HistoryItem[]);
         } catch (e) {
-            console.error("Load history error:", e);
+            console.error(e);
         } finally {
             setLoading(false);
         }
     }, [userToken]);
-
     useEffect(() => {
         loadHistory();
     }, [loadHistory]);
-
     const deleteItem = useCallback(async (id: string) => {
         try {
             await supabase.from("chat_sessions").delete().eq("id", id);
             setHistory((prev) => prev.filter((h) => h.id !== id));
         } catch (e) {
-            console.error("Delete history error:", e);
+            console.error(e);
         }
     }, []);
-
     return {history, loading, loadHistory, deleteItem};
 }
 
-// ===================== SIDEBAR COMPONENT =====================
+// ===================== PROFILE PAGE =====================
+function ProfilePage({user, onBack}: {user: UserProfile; onBack: () => void}) {
+    const [name, setName] = useState(user.full_name || "");
+    const [saving, setSaving] = useState(false);
+    const [saved, setSaved] = useState(false);
+    const [sessionCount, setSessionCount] = useState<number | null>(null);
+
+    useEffect(() => {
+        supabase
+        .from("chat_sessions")
+        .select("id", {count: "exact", head: true})
+        .then(({count}) => setSessionCount(count ?? 0));
+    }, []);
+
+    const handleSave = async () => {
+        setSaving(true);
+        try {
+            await supabase.auth.updateUser({data: {full_name: name}});
+            setSaved(true);
+            setTimeout(() => setSaved(false), 2000);
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleLogout = async () => {
+        await supabase.auth.signOut();
+        onBack();
+    };
+
+    const initials = (user.full_name || user.email || "?")
+    .split(" ")
+    .map((w) => w[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+    const joinDate = user.created_at
+        ? new Date(user.created_at).toLocaleDateString("id-ID", {year: "numeric", month: "long", day: "numeric"})
+        : "-";
+
+    return (
+        <div className="profile-page">
+            <div className="profile-header">
+                <button className="profile-back" onClick={onBack}>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M19 12H5M12 5l-7 7 7 7" />
+                    </svg>
+                    Kembali ke chat
+                </button>
+            </div>
+            <div className="profile-body">
+                <div className="profile-avatar-wrap">
+                    {user.avatar_url ? (
+                        <img src={user.avatar_url} alt="avatar" className="profile-avatar-img" />
+                    ) : (
+                        <div className="profile-avatar-big">{initials}</div>
+                    )}
+                    <h2 className="profile-name">{user.full_name || user.email?.split("@")[0]}</h2>
+                    <p className="profile-email">{user.email}</p>
+                </div>
+
+                <div className="profile-cards">
+                    <div className="profile-card">
+                        <span className="profile-card-label">Bergabung</span>
+                        <span className="profile-card-value">{joinDate}</span>
+                    </div>
+                    <div className="profile-card">
+                        <span className="profile-card-label">Total Sesi</span>
+                        <span className="profile-card-value">{sessionCount === null ? "..." : sessionCount}</span>
+                    </div>
+                </div>
+
+                <div className="profile-section">
+                    <label className="profile-label">Nama Tampilan</label>
+                    <input
+                        className="profile-input"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        placeholder="Nama kamu..."
+                    />
+                    <button
+                        className={`profile-save-btn${saved ? " saved" : ""}`}
+                        onClick={handleSave}
+                        disabled={saving}
+                    >
+                        {saved ? "✓ Tersimpan" : saving ? "Menyimpan..." : "Simpan Perubahan"}
+                    </button>
+                </div>
+
+                <div className="profile-danger">
+                    <button className="profile-logout-btn" onClick={handleLogout}>
+                        <svg
+                            width="15"
+                            height="15"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                        >
+                            <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" />
+                        </svg>
+                        Logout
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// ===================== SIDEBAR =====================
 interface SidebarProps {
     isOpen: boolean;
     onClose: () => void;
@@ -153,8 +249,10 @@ interface SidebarProps {
     onNewChat: () => void;
     connStatus: "checking" | "online" | "error";
     userToken: string | null;
+    user: UserProfile | null;
     msgCount: number;
     timer: string;
+    onOpenProfile: () => void;
 }
 
 function Sidebar({
@@ -175,31 +273,52 @@ function Sidebar({
     onNewChat,
     connStatus,
     userToken,
+    user,
     msgCount,
     timer,
+    onOpenProfile,
 }: SidebarProps) {
     const currentTheme = themes.find((t) => t.id === theme) || themes[0];
+    const currentProfile = profiles.find((p) => p.key === profile);
     const grouped = groupHistoryByDate(history);
+    const [modeOpen, setModeOpen] = useState(false);
+    const modeRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        if (!modeOpen) return;
+        const handler = (e: MouseEvent) => {
+            if (modeRef.current && !modeRef.current.contains(e.target as Node)) setModeOpen(false);
+        };
+        setTimeout(() => document.addEventListener("click", handler), 0);
+        return () => document.removeEventListener("click", handler);
+    }, [modeOpen]);
+
+    const initials = user
+        ? (user.full_name || user.email || "?")
+          .split(" ")
+          .map((w) => w[0])
+          .join("")
+          .toUpperCase()
+          .slice(0, 2)
+        : "?";
 
     return (
         <>
-            {/* Overlay untuk mobile */}
             <div className={`sidebar-overlay${isOpen ? " open" : ""}`} onClick={onClose} />
-
             <aside className={`sidebar${isOpen ? " mobile-open" : ""}`}>
-                {/* Top: Logo + New Chat */}
+                {/* Logo + New Chat */}
                 <div className="sidebar-top">
                     <span className="sidebar-logo">
                         <em>Dani</em>AI
                     </span>
-                    <button className="new-chat-btn" onClick={onNewChat} title="New Chat">
+                    <button className="new-chat-btn" onClick={onNewChat}>
                         <svg
-                            width="16"
-                            height="16"
+                            width="14"
+                            height="14"
                             viewBox="0 0 24 24"
                             fill="none"
                             stroke="currentColor"
-                            strokeWidth="2"
+                            strokeWidth="2.5"
                         >
                             <path d="M12 5v14M5 12h14" />
                         </svg>
@@ -207,33 +326,76 @@ function Sidebar({
                     </button>
                 </div>
 
-                {/* Mode / Profile */}
+                {/* Mode dropdown */}
                 <div className="sidebar-section-label">Mode</div>
-                {profiles.map((p) => (
-                    <button
-                        key={p.key}
-                        className={`mode-btn${profile === p.key ? " active" : ""}`}
-                        onClick={() => {
-                            switchProfile(p.key as ProfileKey);
-                            onClose();
-                        }}
-                    >
-                        <span className="mode-btn-icon">◈</span>
-                        <span className="mode-btn-info">
-                            <span className="mode-btn-label">{p.label}</span>
-                            <span className="mode-btn-desc">{p.desc}</span>
+                <div style={{padding: "0 8px 4px"}} ref={modeRef}>
+                    <button className="mode-dropdown-btn" onClick={() => setModeOpen((o) => !o)}>
+                        <span style={{opacity: 0.6, fontSize: 13, flexShrink: 0}}>◈</span>
+                        <span className="mode-dropdown-info">
+                            <span className="mode-dropdown-label">{currentProfile?.label ?? profile}</span>
+                            <span className="mode-dropdown-desc">{currentProfile?.desc ?? ""}</span>
                         </span>
+                        <svg
+                            width="12"
+                            height="12"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2.5"
+                            style={{
+                                flexShrink: 0,
+                                opacity: 0.4,
+                                transform: modeOpen ? "rotate(180deg)" : "none",
+                                transition: "transform 0.2s",
+                                marginLeft: "auto",
+                            }}
+                        >
+                            <path d="M6 9l6 6 6-6" />
+                        </svg>
                     </button>
-                ))}
+                    {modeOpen && (
+                        <div className="mode-dropdown-list">
+                            {profiles.map((p) => (
+                                <button
+                                    key={p.key}
+                                    className={`mode-dropdown-item${profile === p.key ? " active" : ""}`}
+                                    onClick={() => {
+                                        switchProfile(p.key as ProfileKey);
+                                        setModeOpen(false);
+                                        onClose();
+                                    }}
+                                >
+                                    <span style={{opacity: 0.5, fontSize: 12, flexShrink: 0}}>◈</span>
+                                    <span className="mode-dropdown-item-info">
+                                        <span style={{fontSize: 13, fontWeight: 500}}>{p.label}</span>
+                                        <span className="mode-dropdown-item-desc">{p.desc}</span>
+                                    </span>
+                                    {profile === p.key && (
+                                        <svg
+                                            width="13"
+                                            height="13"
+                                            viewBox="0 0 24 24"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            strokeWidth="2.5"
+                                            style={{marginLeft: "auto", color: "var(--accent)", flexShrink: 0}}
+                                        >
+                                            <path d="M20 6L9 17l-5-5" />
+                                        </svg>
+                                    )}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </div>
 
                 {/* History */}
-                <div className="sidebar-section-label">
-                    History
-                    {historyLoading && <span style={{marginLeft: 6, opacity: 0.5}}>···</span>}
+                <div className="sidebar-section-label" style={{marginTop: 8}}>
+                    Riwayat {historyLoading && <span style={{opacity: 0.3, fontSize: 10}}>●●●</span>}
                 </div>
                 <div className="sidebar-history">
                     {!userToken ? (
-                        <p className="history-empty-msg">Login untuk lihat history</p>
+                        <p className="history-empty-msg">Login untuk lihat riwayat</p>
                     ) : history.length === 0 && !historyLoading ? (
                         <p className="history-empty-msg">Belum ada percakapan</p>
                     ) : (
@@ -249,7 +411,17 @@ function Sidebar({
                                             onClose();
                                         }}
                                     >
-                                        <span className="history-item-icon">💬</span>
+                                        <svg
+                                            width="12"
+                                            height="12"
+                                            viewBox="0 0 24 24"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            strokeWidth="2"
+                                            style={{flexShrink: 0, opacity: 0.35}}
+                                        >
+                                            <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
+                                        </svg>
                                         <span className="history-item-title">{item.title || "Untitled"}</span>
                                         <button
                                             className="history-item-del"
@@ -268,52 +440,70 @@ function Sidebar({
                     )}
                 </div>
 
-                {/* Bottom: User + Theme */}
+                {/* Bottom */}
                 <div className="sidebar-bottom">
-                    {/* Status bar kecil */}
-                    <div
-                        style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 6,
-                            padding: "4px 10px",
-                            fontSize: 11,
-                            color: "var(--text3)",
-                        }}
-                    >
+                    {/* Status row */}
+                    <div className="sidebar-status-row">
                         <span
-                            style={{
-                                width: 6,
-                                height: 6,
-                                borderRadius: "50%",
-                                background:
-                                    connStatus === "online"
-                                        ? "#3ddc84"
-                                        : connStatus === "error"
-                                        ? "#f06c6c"
-                                        : "var(--text3)",
-                                display: "inline-block",
-                                flexShrink: 0,
-                            }}
+                            className={`sidebar-status-dot${
+                                connStatus === "online" ? " online" : connStatus === "error" ? " error" : ""
+                            }`}
                         />
                         {connStatus === "online" ? "online" : connStatus === "error" ? "offline" : "checking"}
-                        <span style={{margin: "0 4px", opacity: 0.4}}>·</span>
+                        <span className="sidebar-status-sep">·</span>
                         {msgCount} pesan
-                        <span style={{margin: "0 4px", opacity: 0.4}}>·</span>
+                        <span className="sidebar-status-sep">·</span>
                         {timer}
                     </div>
 
-                    {/* Auth */}
-                    <div style={{padding: "0 2px"}}>
-                        <AuthButton />
-                    </div>
+                    {/* User row */}
+                    {userToken && user ? (
+                        <button className="sidebar-user-btn" onClick={onOpenProfile}>
+                            <div className="sidebar-avatar">
+                                {user.avatar_url ? (
+                                    <img
+                                        src={user.avatar_url}
+                                        alt="av"
+                                        style={{width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%"}}
+                                    />
+                                ) : (
+                                    initials
+                                )}
+                            </div>
+                            <div className="sidebar-user-info">
+                                <span className="sidebar-user-name">{user.full_name || user.email?.split("@")[0]}</span>
+                                <span className="sidebar-user-sub">{user.email}</span>
+                            </div>
+                            <svg
+                                width="13"
+                                height="13"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                style={{flexShrink: 0, opacity: 0.35, marginLeft: "auto"}}
+                            >
+                                <path d="M9 18l6-6-6-6" />
+                            </svg>
+                        </button>
+                    ) : (
+                        <button
+                            className="sidebar-user-btn"
+                            onClick={() => supabase.auth.signInWithOAuth({provider: "google"})}
+                        >
+                            <div className="sidebar-avatar" style={{background: "var(--input-bg)"}}>
+                                ?
+                            </div>
+                            <span style={{fontSize: 12, color: "var(--text3)"}}>Login untuk simpan riwayat</span>
+                        </button>
+                    )}
 
                     {/* Theme picker */}
                     <div className="sidebar-theme-wrap" onClick={(e) => e.stopPropagation()}>
                         <button className="sidebar-theme-btn" onClick={() => setPickerOpen(!pickerOpen)}>
                             <span className="sidebar-theme-dot" style={{background: currentTheme.color}} />
                             Tema: {currentTheme.label}
-                            <span style={{marginLeft: "auto", opacity: 0.5, fontSize: 10}}>▲</span>
+                            <span style={{marginLeft: "auto", opacity: 0.35, fontSize: 10}}>▲</span>
                         </button>
                         {pickerOpen && (
                             <div className="theme-dropdown">
@@ -346,6 +536,8 @@ export default function App() {
     const [msgCount, setMsgCount] = useState(0);
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [userToken, setUserToken] = useState<string | null>(null);
+    const [user, setUser] = useState<UserProfile | null>(null);
+    const [page, setPage] = useState<"chat" | "profile">("chat");
 
     const chatBodyRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -354,53 +546,59 @@ export default function App() {
     const {messages, isLoading, profile, switchProfile, send, clearMessages} = useChat("pentest");
     const {history, loading: historyLoading, loadHistory, deleteItem} = useHistory(userToken);
 
-    // Auth
     useEffect(() => {
         supabase.auth.getSession().then(({data}) => {
-            setUserToken(data.session?.access_token ?? null);
+            const s = data.session;
+            setUserToken(s?.access_token ?? null);
+            if (s?.user)
+                setUser({
+                    id: s.user.id,
+                    email: s.user.email ?? "",
+                    full_name: s.user.user_metadata?.full_name,
+                    avatar_url: s.user.user_metadata?.avatar_url,
+                    created_at: s.user.created_at,
+                });
         });
         const {
             data: {subscription},
-        } = supabase.auth.onAuthStateChange((_e, session) => {
-            setUserToken(session?.access_token ?? null);
+        } = supabase.auth.onAuthStateChange((_e, s) => {
+            setUserToken(s?.access_token ?? null);
+            if (s?.user)
+                setUser({
+                    id: s.user.id,
+                    email: s.user.email ?? "",
+                    full_name: s.user.user_metadata?.full_name,
+                    avatar_url: s.user.user_metadata?.avatar_url,
+                    created_at: s.user.created_at,
+                });
+            else setUser(null);
         });
         return () => subscription.unsubscribe();
     }, []);
 
-    // Refresh history saat login
     useEffect(() => {
         if (userToken) loadHistory();
     }, [userToken, loadHistory]);
-
-    // Auto scroll
     useEffect(() => {
         const el = chatBodyRef.current;
         if (el) el.scrollTop = el.scrollHeight;
     }, [messages, isLoading]);
-
-    // Auto focus
     useEffect(() => {
-        if (!isLoading) setTimeout(() => inputRef.current?.focus(), 50);
-    }, [isLoading]);
-
-    // Msg count
+        if (!isLoading && page === "chat") setTimeout(() => inputRef.current?.focus(), 50);
+    }, [isLoading, page]);
     useEffect(() => {
         setMsgCount(messages.filter((m) => m.type === "user").length);
     }, [messages]);
-
-    // Health check
     useEffect(() => {
         checkHealth()
-        .then((data) => setConnStatus(data.api_key === "missing" ? "error" : "online"))
+        .then((d) => setConnStatus(d.api_key === "missing" ? "error" : "online"))
         .catch(() => setConnStatus("error"));
     }, []);
-
-    // Close picker on outside click
     useEffect(() => {
         if (!pickerOpen) return;
-        const handler = () => setPickerOpen(false);
-        setTimeout(() => document.addEventListener("click", handler), 0);
-        return () => document.removeEventListener("click", handler);
+        const h = () => setPickerOpen(false);
+        setTimeout(() => document.addEventListener("click", h), 0);
+        return () => document.removeEventListener("click", h);
     }, [pickerOpen, setPickerOpen]);
 
     const handleSend = useCallback(async () => {
@@ -409,8 +607,6 @@ export default function App() {
         setInput("");
         if (inputRef.current) inputRef.current.style.height = "auto";
         await send(text);
-        // Simpan ke history setelah send
-        // TODO: simpan session ke Supabase di sini atau di useChat hook
     }, [input, isLoading, send]);
 
     const handleKey = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -420,53 +616,57 @@ export default function App() {
         }
     };
 
-    const fillInput = (text: string) => {
-        setInput(text);
-        setTimeout(() => inputRef.current?.focus(), 50);
+    const sidebarProps = {
+        isOpen: sidebarOpen,
+        onClose: () => setSidebarOpen(false),
+        theme,
+        themes: THEMES,
+        setTheme,
+        pickerOpen,
+        setPickerOpen,
+        profile,
+        profiles: PROFILES,
+        switchProfile,
+        history,
+        historyLoading,
+        onHistoryLoad: (id: string) => {
+            console.log("Load:", id);
+            setSidebarOpen(false);
+            setPage("chat");
+        },
+        onHistoryDelete: deleteItem,
+        onNewChat: () => {
+            clearMessages?.();
+            setSidebarOpen(false);
+            setPage("chat");
+            setTimeout(() => inputRef.current?.focus(), 100);
+        },
+        connStatus,
+        userToken,
+        user,
+        msgCount,
+        timer,
+        onOpenProfile: () => setPage("profile"),
     };
 
-    const handleNewChat = () => {
-        clearMessages?.();
-        setSidebarOpen(false);
-        setTimeout(() => inputRef.current?.focus(), 100);
-    };
-
-    const handleHistoryLoad = (id: string) => {
-        // TODO: load messages dari session id
-        console.log("Load session:", id);
-        setSidebarOpen(false);
-    };
+    if (page === "profile" && user) {
+        return (
+            <div className="app-layout">
+                <Sidebar {...sidebarProps} />
+                <main className="main-area">
+                    <ProfilePage user={user} onBack={() => setPage("chat")} />
+                </main>
+            </div>
+        );
+    }
 
     return (
         <div className="app-layout">
-            {/* ===== SIDEBAR (kiri, permanen di desktop) ===== */}
-            <Sidebar
-                isOpen={sidebarOpen}
-                onClose={() => setSidebarOpen(false)}
-                theme={theme}
-                themes={THEMES}
-                setTheme={setTheme}
-                pickerOpen={pickerOpen}
-                setPickerOpen={setPickerOpen}
-                profile={profile}
-                profiles={PROFILES}
-                switchProfile={switchProfile}
-                history={history}
-                historyLoading={historyLoading}
-                onHistoryLoad={handleHistoryLoad}
-                onHistoryDelete={deleteItem}
-                onNewChat={handleNewChat}
-                connStatus={connStatus}
-                userToken={userToken}
-                msgCount={msgCount}
-                timer={timer}
-            />
-
-            {/* ===== MAIN AREA ===== */}
+            <Sidebar {...sidebarProps} />
             <main className="main-area">
-                {/* Topbar — hanya tampil di mobile */}
+                {/* Topbar mobile only */}
                 <header className="topbar">
-                    <button className="topbar-ham" onClick={() => setSidebarOpen(true)} aria-label="Menu">
+                    <button className="topbar-ham" onClick={() => setSidebarOpen(true)}>
                         <svg
                             width="18"
                             height="18"
@@ -494,23 +694,26 @@ export default function App() {
                     </div>
                 </header>
 
-                {/* Chat area */}
                 <div className="chat-scroll" ref={chatBodyRef}>
                     <div className="chat-inner">
                         {messages.length === 0 ? (
-                            // Welcome screen
                             <div className="welcome">
                                 <div className="welcome-logo">🛡️</div>
-                                <h1 className="welcome-title">Halo, aku Dani AI</h1>
+                                <h1 className="welcome-title">
+                                    Halo{user?.full_name ? `, ${user.full_name.split(" ")[0]}` : ""}!
+                                </h1>
                                 <p className="welcome-sub">
-                                    Asisten keamanan untuk pentest, CTF, OSINT, dan lebih banyak lagi.
+                                    Aku Dani AI — asisten keamanan siber. Mau mulai dari mana?
                                 </p>
                                 <div className="welcome-chips">
                                     {SHORTCUTS.map((s) => (
                                         <button
                                             key={s.label}
                                             className="welcome-chip"
-                                            onClick={() => fillInput(s.text)}
+                                            onClick={() => {
+                                                setInput(s.text);
+                                                setTimeout(() => inputRef.current?.focus(), 50);
+                                            }}
                                         >
                                             {s.label}
                                         </button>
@@ -521,7 +724,6 @@ export default function App() {
                             messages.map((msg) => <MessageBubble key={msg.id} msg={msg} />)
                         )}
 
-                        {/* Typing indicator */}
                         {isLoading && (
                             <div className="typing-row">
                                 <div className="msg-role">
@@ -538,7 +740,6 @@ export default function App() {
                     </div>
                 </div>
 
-                {/* Input area */}
                 <div className="input-area">
                     <div className="input-inner">
                         <div className="input-box">
@@ -561,7 +762,6 @@ export default function App() {
                                 className={`send-btn${input.trim() ? " ready" : ""}`}
                                 onClick={handleSend}
                                 disabled={isLoading || !input.trim()}
-                                aria-label="Kirim"
                             >
                                 <svg
                                     width="16"
