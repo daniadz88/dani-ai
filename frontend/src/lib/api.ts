@@ -20,13 +20,18 @@ export async function checkHealth() {
     return res.json();
 }
 
-export async function getSessions(userId: string) {
-    const res = await fetch(`${BASE}/history/${userId}`);
+export async function getSessions(token: string) {
+    const res = await fetch(`${BASE}/history`, {
+        headers: {Authorization: `Bearer ${token}`},
+    });
     if (!res.ok) return [];
     return res.json();
 }
 
-export async function deleteSession(sessionId: string) {
-    const res = await fetch(`${BASE}/history/${sessionId}`, {method: "DELETE"});
+export async function deleteSession(sessionId: string, token: string) {
+    const res = await fetch(`${BASE}/history/${sessionId}`, {
+        method: "DELETE",
+        headers: {Authorization: `Bearer ${token}`},
+    });
     return res.ok;
 }
