@@ -435,7 +435,6 @@ body,
 }
 
 .nav-ham {
-    display: none;
     background: none;
     border: 1px solid var(--border);
     border-radius: 6px;
@@ -444,6 +443,8 @@ body,
     cursor: pointer;
     font-size: 14px;
     transition: all 0.15s;
+    /* selalu visible, disembunyiin di desktop */
+    display: none;
 }
 .nav-ham:hover {
     color: var(--accent);
@@ -1202,14 +1203,28 @@ body,
 }
 
 /* ===================== RESPONSIVE ===================== */
-@media (max-width: 900px) {
-    .pane-history {
-        display: none;
-    } /* di mobile pakai drawer */
-    .nav-history-btn {
+
+/* DESKTOP: history sidebar tampil, hamburger sembunyi */
+@media (min-width: 901px) {
+    .nav-ham {
         display: none;
     }
+    /* history sidebar tampil otomatis lewat JSX conditional */
 }
+
+/* TABLET/MOBILE ≤900px: history sidebar sembunyi, pakai drawer */
+@media (max-width: 900px) {
+    .pane-history {
+        display: none !important;
+    } /* paksa hide, pakai drawer */
+    .nav-history-btn {
+        display: none;
+    } /* tombol history pindah ke mobile menu */
+    .nav-ham {
+        display: block;
+    } /* hamburger muncul */
+}
+
 @media (max-width: 600px) {
     .nav-pill {
         display: none;
@@ -1223,7 +1238,7 @@ body,
     }
     .term-input {
         font-size: 16px;
-    }
+    } /* prevent iOS zoom */
     .info-bar {
         gap: 3px;
         padding: 4px 10px;
@@ -1250,8 +1265,9 @@ body,
     }
     .theme-picker-wrap {
         display: none;
-    } /* di mobile, theme via mobile menu */
+    } /* theme lewat mobile menu */
 }
+
 @media (max-width: 380px) {
     .ptab {
         font-size: 9px;
