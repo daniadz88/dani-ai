@@ -5,8 +5,12 @@ import {ExpressAdapter} from "@nestjs/platform-express";
 import express from "express";
 
 const server = express();
+let initialized = false;
 
 async function bootstrap() {
+    if (initialized) return;
+    initialized = true;
+
     const app = await NestFactory.create(AppModule, new ExpressAdapter(server));
 
     app.enableCors({
@@ -16,10 +20,12 @@ async function bootstrap() {
         credentials: true,
     });
 
+    // Jangan pakai setGlobalPrefix — biarkan controller yang handle /api/*
     await app.init();
 }
 
-bootstrap();
-
-// Export untuk Vercel serverless
-export default server;
+// Handler untuk Vercel serverless
+export default async function handler(req: any, res: any) {
+    await bootstrap();
+    server(req, res);
+}
