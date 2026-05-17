@@ -158,7 +158,11 @@ function ProfilePage({user, onBack}: {user: UserProfile; onBack: () => void}) {
     .toUpperCase()
     .slice(0, 2);
     const joinDate = user.created_at
-        ? new Date(user.created_at).toLocaleDateString("id-ID", {year: "numeric", month: "long", day: "numeric"})
+        ? new Date(user.created_at).toLocaleDateString("id-ID", {
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+          })
         : "-";
 
     return (
@@ -253,6 +257,7 @@ interface SidebarProps {
     msgCount: number;
     timer: string;
     onOpenProfile: () => void;
+    loadingSessionId: string | null;
 }
 
 function Sidebar({
@@ -277,6 +282,7 @@ function Sidebar({
     msgCount,
     timer,
     onOpenProfile,
+    loadingSessionId,
 }: SidebarProps) {
     const currentTheme = themes.find((t) => t.id === theme) || themes[0];
     const currentProfile = profiles.find((p) => p.key === profile);
@@ -378,7 +384,11 @@ function Sidebar({
                                             fill="none"
                                             stroke="currentColor"
                                             strokeWidth="2.5"
-                                            style={{marginLeft: "auto", color: "var(--accent)", flexShrink: 0}}
+                                            style={{
+                                                marginLeft: "auto",
+                                                color: "var(--accent)",
+                                                flexShrink: 0,
+                                            }}
                                         >
                                             <path d="M20 6L9 17l-5-5" />
                                         </svg>
@@ -405,23 +415,39 @@ function Sidebar({
                                 {items.map((item) => (
                                     <button
                                         key={item.id}
-                                        className="history-item"
+                                        className={`history-item${loadingSessionId === item.id ? " loading" : ""}`}
                                         onClick={() => {
                                             onHistoryLoad(item.id);
                                             onClose();
                                         }}
+                                        disabled={loadingSessionId === item.id}
                                     >
-                                        <svg
-                                            width="12"
-                                            height="12"
-                                            viewBox="0 0 24 24"
-                                            fill="none"
-                                            stroke="currentColor"
-                                            strokeWidth="2"
-                                            style={{flexShrink: 0, opacity: 0.35}}
-                                        >
-                                            <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
-                                        </svg>
+                                        {loadingSessionId === item.id ? (
+                                            <span
+                                                style={{
+                                                    width: 12,
+                                                    height: 12,
+                                                    border: "1.5px solid var(--accent)",
+                                                    borderTopColor: "transparent",
+                                                    borderRadius: "50%",
+                                                    display: "inline-block",
+                                                    animation: "spin 0.6s linear infinite",
+                                                    flexShrink: 0,
+                                                }}
+                                            />
+                                        ) : (
+                                            <svg
+                                                width="12"
+                                                height="12"
+                                                viewBox="0 0 24 24"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                strokeWidth="2"
+                                                style={{flexShrink: 0, opacity: 0.35}}
+                                            >
+                                                <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
+                                            </svg>
+                                        )}
                                         <span className="history-item-title">{item.title || "Untitled"}</span>
                                         <button
                                             className="history-item-del"
@@ -464,7 +490,12 @@ function Sidebar({
                                     <img
                                         src={user.avatar_url}
                                         alt="av"
-                                        style={{width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%"}}
+                                        style={{
+                                            width: "100%",
+                                            height: "100%",
+                                            objectFit: "cover",
+                                            borderRadius: "50%",
+                                        }}
                                     />
                                 ) : (
                                     initials
@@ -538,12 +569,13 @@ export default function App() {
     const [userToken, setUserToken] = useState<string | null>(null);
     const [user, setUser] = useState<UserProfile | null>(null);
     const [page, setPage] = useState<"chat" | "profile">("chat");
+    const [loadingSessionId, setLoadingSessionId] = useState<string | null>(null);
 
     const chatBodyRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLTextAreaElement>(null);
     const timer = useTimer();
     const {theme, setTheme, pickerOpen, setPickerOpen} = useTheme();
-    const {messages, isLoading, profile, switchProfile, send, clearMessages} = useChat("pentest");
+    const {messages, isLoading, profile, switchProfile, send, clearMessages, loadSession} = useChat("pentest");
     const {history, loading: historyLoading, loadHistory, deleteItem} = useHistory(userToken);
 
     useEffect(() => {
@@ -579,21 +611,26 @@ export default function App() {
     useEffect(() => {
         if (userToken) loadHistory();
     }, [userToken, loadHistory]);
+
     useEffect(() => {
         const el = chatBodyRef.current;
         if (el) el.scrollTop = el.scrollHeight;
     }, [messages, isLoading]);
+
     useEffect(() => {
         if (!isLoading && page === "chat") setTimeout(() => inputRef.current?.focus(), 50);
     }, [isLoading, page]);
+
     useEffect(() => {
         setMsgCount(messages.filter((m) => m.type === "user").length);
     }, [messages]);
+
     useEffect(() => {
         checkHealth()
         .then((d) => setConnStatus(d.api_key === "missing" ? "error" : "online"))
         .catch(() => setConnStatus("error"));
     }, []);
+
     useEffect(() => {
         if (!pickerOpen) return;
         const h = () => setPickerOpen(false);
@@ -616,6 +653,26 @@ export default function App() {
         }
     };
 
+    // ─── FIX: Load session from Supabase ───────────────────────────────────────
+    const handleHistoryLoad = useCallback(
+        async (id: string) => {
+            setLoadingSessionId(id);
+            setSidebarOpen(false);
+            setPage("chat");
+            try {
+                // loadSession (dari useChat) sudah: fetch Supabase → restore profile → restore messages
+                await loadSession(id);
+
+                setTimeout(() => inputRef.current?.focus(), 100);
+            } catch (e) {
+                console.error("Load session error:", e);
+            } finally {
+                setLoadingSessionId(null);
+            }
+        },
+        [loadSession]
+    );
+
     const sidebarProps = {
         isOpen: sidebarOpen,
         onClose: () => setSidebarOpen(false),
@@ -629,11 +686,7 @@ export default function App() {
         switchProfile,
         history,
         historyLoading,
-        onHistoryLoad: (id: string) => {
-            console.log("Load:", id);
-            setSidebarOpen(false);
-            setPage("chat");
-        },
+        onHistoryLoad: handleHistoryLoad,
         onHistoryDelete: deleteItem,
         onNewChat: () => {
             clearMessages?.();
@@ -647,6 +700,7 @@ export default function App() {
         msgCount,
         timer,
         onOpenProfile: () => setPage("profile"),
+        loadingSessionId,
     };
 
     if (page === "profile" && user) {
@@ -700,7 +754,8 @@ export default function App() {
                             <div className="welcome">
                                 <div className="welcome-logo">🛡️</div>
                                 <h1 className="welcome-title">
-                                    Halo{user?.full_name ? `, ${user.full_name.split(" ")[0]}` : ""}!
+                                    Halo
+                                    {user?.full_name ? `, ${user.full_name.split(" ")[0]}` : ""}!
                                 </h1>
                                 <p className="welcome-sub">
                                     Aku Dani AI — asisten keamanan siber. Mau mulai dari mana?
