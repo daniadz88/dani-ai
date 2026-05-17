@@ -1,15 +1,9 @@
-// src/app.module.ts
-
-import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
-import { ChatModule } from './chat/chat.module';
-import { HealthModule } from './health/health.module';
+import {Module} from "@nestjs/common";
+import {ConfigModule} from "@nestjs/config";
+import {ChatModule} from "./chat/chat.module";
+import {HealthModule} from "./health/health.module";
 
 @Module({
-  imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
-    ChatModule,
-    HealthModule,
-  ],
+    imports: [ConfigModule.forRoot({isGlobal: true}), ChatModule, HealthModule],
 })
 export class AppModule {}
