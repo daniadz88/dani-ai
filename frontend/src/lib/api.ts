@@ -19,3 +19,14 @@ export async function checkHealth() {
     const res = await fetch(`${BASE}/health`);
     return res.json();
 }
+
+export async function getSessions(userId: string) {
+    const res = await fetch(`${BASE}/history/${userId}`);
+    if (!res.ok) return [];
+    return res.json();
+}
+
+export async function deleteSession(sessionId: string) {
+    const res = await fetch(`${BASE}/history/${sessionId}`, {method: "DELETE"});
+    return res.ok;
+}
