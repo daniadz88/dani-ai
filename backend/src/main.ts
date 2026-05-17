@@ -1,8 +1,13 @@
+// backend/src/main.ts
 import {NestFactory} from "@nestjs/core";
 import {AppModule} from "./app.module";
+import {ExpressAdapter} from "@nestjs/platform-express";
+import express from "express";
+
+const server = express();
 
 async function bootstrap() {
-    const app = await NestFactory.create(AppModule);
+    const app = await NestFactory.create(AppModule, new ExpressAdapter(server));
 
     app.enableCors({
         origin: ["http://localhost:5173", "https://dani-ai-olive.vercel.app", /https:\/\/dani-ai.*\.vercel\.app$/],
@@ -11,8 +16,10 @@ async function bootstrap() {
         credentials: true,
     });
 
-    const port = process.env.PORT ?? 3001;
-    await app.listen(port);
-    console.log(`[+] Backend running → http://localhost:${port}`);
+    await app.init();
 }
+
 bootstrap();
+
+// Export untuk Vercel serverless
+export default server;
