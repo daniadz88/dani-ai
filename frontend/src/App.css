@@ -1290,3 +1290,250 @@ body,
         padding: 8px 12px;
     }
 }
+/* ============================================================
+   TAMBAHKAN INI KE BAGIAN BAWAH App.css
+   ============================================================ */
+
+/* ── System message ─────────────────────────────────────── */
+.mb-sys {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 8px 12px;
+    margin: 4px 0;
+    background: var(--accent-light);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 12px;
+    color: var(--text3);
+    font-family: var(--font-mono);
+}
+.mb-sys-icon {
+    opacity: 0.5;
+    flex-shrink: 0;
+    font-size: 11px;
+    margin-top: 2px;
+}
+
+/* ── Code block ─────────────────────────────────────────── */
+.mb-code-wrap {
+    background: #0d1117;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    overflow: hidden;
+    margin: 10px 0;
+    font-size: 13px;
+}
+[data-theme="ice"] .mb-code-wrap {
+    background: #f6f8fa;
+    border-color: rgba(0, 0, 0, 0.1);
+}
+
+.mb-code-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 14px;
+    background: rgba(255, 255, 255, 0.04);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+[data-theme="ice"] .mb-code-header {
+    background: rgba(0, 0, 0, 0.04);
+    border-bottom-color: rgba(0, 0, 0, 0.08);
+}
+
+.mb-code-lang {
+    font-size: 11px;
+    color: var(--accent);
+    font-family: var(--font-mono);
+    font-weight: 500;
+    text-transform: lowercase;
+    letter-spacing: 0.3px;
+}
+
+.mb-code-copy {
+    background: none;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 5px;
+    padding: 2px 9px;
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 11px;
+    cursor: pointer;
+    font-family: var(--font-mono);
+    transition: all 0.15s;
+}
+[data-theme="ice"] .mb-code-copy {
+    border-color: rgba(0, 0, 0, 0.15);
+    color: rgba(0, 0, 0, 0.4);
+}
+.mb-code-copy:hover {
+    color: var(--accent);
+    border-color: var(--accent);
+    background: var(--accent-light);
+}
+
+.mb-pre {
+    margin: 0;
+    padding: 14px 16px;
+    overflow-x: auto;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+}
+.mb-pre code {
+    background: none !important;
+    border: none !important;
+    padding: 0 !important;
+    font-family: "JetBrains Mono", "Fira Code", "Cascadia Code", monospace;
+    font-size: 13px;
+    line-height: 1.7;
+    color: #e6edf3;
+    white-space: pre;
+}
+[data-theme="ice"] .mb-pre code {
+    color: #24292f;
+}
+
+/* Syntax highlight tokens */
+.hl-kw {
+    color: #ff7b72;
+    font-weight: 500;
+} /* keywords — merah */
+.hl-str {
+    color: #a5d6ff;
+} /* strings — biru muda */
+.hl-num {
+    color: #79c0ff;
+} /* numbers — biru */
+.hl-cmt {
+    color: #8b949e;
+    font-style: italic;
+} /* comments — abu */
+[data-theme="ice"] .hl-kw {
+    color: #cf222e;
+}
+[data-theme="ice"] .hl-str {
+    color: #0a3069;
+}
+[data-theme="ice"] .hl-num {
+    color: #0550ae;
+}
+[data-theme="ice"] .hl-cmt {
+    color: #6e7781;
+}
+
+/* ── Inline code ─────────────────────────────────────────── */
+.mb-icode {
+    background: rgba(255, 255, 255, 0.08) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    border-radius: 5px !important;
+    padding: 1px 6px !important;
+    font-family: "JetBrains Mono", monospace !important;
+    font-size: 0.88em !important;
+    color: var(--accent) !important;
+}
+[data-theme="ice"] .mb-icode {
+    background: rgba(0, 0, 0, 0.05) !important;
+    border-color: rgba(0, 0, 0, 0.1) !important;
+}
+
+/* ── Headers ─────────────────────────────────────────────── */
+.mb-h1 {
+    font-size: 1.3em;
+    font-weight: 700;
+    color: var(--text);
+    margin: 14px 0 6px;
+    line-height: 1.3;
+}
+.mb-h2 {
+    font-size: 1.15em;
+    font-weight: 600;
+    color: var(--text);
+    margin: 12px 0 5px;
+    line-height: 1.3;
+}
+.mb-h3 {
+    font-size: 1.05em;
+    font-weight: 600;
+    color: var(--text2);
+    margin: 10px 0 4px;
+    line-height: 1.3;
+}
+
+/* ── Lists ───────────────────────────────────────────────── */
+.mb-ul,
+.mb-ol {
+    margin: 8px 0;
+    padding-left: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.mb-ul {
+    list-style: none;
+    padding-left: 0;
+}
+.mb-li {
+    position: relative;
+    padding-left: 18px;
+    color: var(--text);
+    line-height: 1.6;
+}
+.mb-li::before {
+    content: "▸";
+    position: absolute;
+    left: 0;
+    color: var(--accent);
+    font-size: 11px;
+    top: 4px;
+}
+.mb-oli {
+    color: var(--text);
+    line-height: 1.6;
+}
+
+/* ── Blockquote ──────────────────────────────────────────── */
+.mb-bq {
+    border-left: 3px solid var(--accent);
+    padding: 6px 14px;
+    margin: 8px 0;
+    color: var(--text2);
+    background: var(--accent-light);
+    border-radius: 0 6px 6px 0;
+    font-style: italic;
+}
+
+/* ── Horizontal rule ─────────────────────────────────────── */
+.mb-hr {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 12px 0;
+}
+
+/* ── msg-content override — pastikan padding kiri ada ───── */
+.msg-content {
+    padding-left: 38px;
+    font-size: 15px;
+    line-height: 1.75;
+    color: var(--text);
+    word-break: break-word;
+}
+
+/* User message — lebih simpel, tidak perlu full markdown */
+.msg-row-user .msg-content {
+    color: var(--text);
+}
+
+@media (max-width: 768px) {
+    .mb-pre code {
+        font-size: 12px;
+    }
+    .mb-code-wrap {
+        font-size: 12px;
+        border-radius: 8px;
+    }
+    .msg-content {
+        font-size: 14px;
+        padding-left: 34px;
+    }
+}

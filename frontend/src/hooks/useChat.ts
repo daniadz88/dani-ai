@@ -8,7 +8,6 @@ import {supabase} from "../lib/supabase";
 let msgIdx = 1;
 const nowStr = () => new Date().toLocaleTimeString("id-ID", {hour: "2-digit", minute: "2-digit"});
 
-// Generate UUID sederhana
 const genId = () =>
     typeof crypto !== "undefined" && crypto.randomUUID
         ? crypto.randomUUID()
@@ -19,7 +18,6 @@ export function useChat(initialProfile: ProfileKey = "pentest") {
     const [messages, setMessages] = useState<DisplayMessage[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const history = useRef<ChatMessage[]>([]);
-    // Session ID untuk Supabase — baru di-generate saat pesan pertama dikirim
     const sessionId = useRef<string | null>(null);
 
     const addDisplay = useCallback((type: DisplayMessage["type"], text: string) => {
@@ -46,28 +44,63 @@ export function useChat(initialProfile: ProfileKey = "pentest") {
                     sessionId.current = genId();
                 }
 
-                await supabase.from("chat_sessions").upsert({
+                // user.id sudah UUID — langsung pakai
+                const {error} = await supabase.from("chat_sessions").upsert({
                     id: sessionId.current,
-                    user_id: user.id,
+                    user_id: user.id, // UUID, bukan TEXT
                     title: firstUserMsg.slice(0, 80),
                     profile: currentProfile,
                     messages: allHistory,
                     updated_at: new Date().toISOString(),
                 });
+
+                if (error) console.warn("Supabase upsert error:", error.message);
             } catch (e) {
-                // Jangan crash app kalau save gagal
                 console.warn("Save session failed:", e);
             }
         },
         []
     );
 
+    // ── Load session dari history ─────────────────────────────────────────────
+    const loadSession = useCallback(async (id: string) => {
+        try {
+            const {data, error} = await supabase.from("chat_sessions").select("*").eq("id", id).single();
+
+            if (error || !data) {
+                console.warn("Load session error:", error?.message);
+                return;
+            }
+
+            // Restore state
+            sessionId.current = data.id;
+            history.current = data.messages ?? [];
+            setProfileState(data.profile as ProfileKey);
+
+            // Restore display messages dari history
+            const restored: DisplayMessage[] = [];
+            for (const msg of history.current) {
+                if (msg.role === "user" || msg.role === "assistant") {
+                    restored.push({
+                        id: `msg-${msgIdx++}`,
+                        type: msg.role === "user" ? "user" : "ai",
+                        text: msg.content,
+                        time: "",
+                    });
+                }
+            }
+            setMessages(restored);
+        } catch (e) {
+            console.warn("loadSession failed:", e);
+        }
+    }, []);
+
     // ── Switch profile ────────────────────────────────────────────────────────
     const switchProfile = useCallback(
         (p: ProfileKey) => {
             setProfileState(p);
             history.current = [];
-            sessionId.current = null; // mulai session baru saat ganti profile
+            sessionId.current = null;
             addDisplay("system", `Profile diubah ke **${p}**. History direset.`);
         },
         [addDisplay]
@@ -77,7 +110,7 @@ export function useChat(initialProfile: ProfileKey = "pentest") {
     const clearMessages = useCallback(() => {
         setMessages([]);
         history.current = [];
-        sessionId.current = null; // session baru
+        sessionId.current = null;
     }, []);
 
     // ── Send ──────────────────────────────────────────────────────────────────
@@ -86,7 +119,6 @@ export function useChat(initialProfile: ProfileKey = "pentest") {
             const text = input.trim();
             if (!text || isLoading) return;
 
-            // Catat pesan pertama untuk judul session
             const isFirstMessage = history.current.length === 0;
             const firstMsg = isFirstMessage ? text : history.current[0]?.content ?? text;
 
@@ -98,11 +130,11 @@ export function useChat(initialProfile: ProfileKey = "pentest") {
 
                 history.current.push({role: "user", content: text});
                 history.current.push({role: "assistant", content: data.reply});
-                if (history.current.length > 20) history.current = history.current.slice(-20);
+                if (history.current.length > 40) history.current = history.current.slice(-40);
 
                 addDisplay("ai", data.reply);
 
-                // Simpan ke Supabase (fire-and-forget, tidak block UI)
+                // Fire-and-forget — tidak block UI
                 saveSession(history.current, profile, firstMsg);
             } catch (e: any) {
                 addDisplay("system", `❌ ${e.message}`);
@@ -113,5 +145,5 @@ export function useChat(initialProfile: ProfileKey = "pentest") {
         [isLoading, profile, addDisplay, saveSession]
     );
 
-    return {messages, isLoading, profile, switchProfile, send, clearMessages};
+    return {messages, isLoading, profile, switchProfile, send, clearMessages, loadSession};
 }

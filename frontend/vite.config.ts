@@ -1,3 +1,4 @@
+// vite.config.ts
 import {defineConfig} from "vite";
 import react from "@vitejs/plugin-react";
 import {VitePWA} from "vite-plugin-pwa";
@@ -6,101 +7,66 @@ export default defineConfig({
     plugins: [
         react(),
         VitePWA({
+            // ← KUNCI auto-update: prompt = tanya user, autoUpdate = langsung update
             registerType: "autoUpdate",
-            includeAssets: ["favicon.svg", "icon-192.png", "icon-512.png"],
-            manifest: {
-                name: "Dani AI — Security Terminal",
-                short_name: "Dani AI",
-                description: "Security research assistant by daniadz88",
-                start_url: "/",
-                display: "standalone",
-                orientation: "portrait-primary",
-                background_color: "#0d0f14",
-                theme_color: "#0d0f14",
-                categories: ["productivity", "utilities"],
-                icons: [
-                    {
-                        src: "/favicon.svg",
-                        sizes: "any",
-                        type: "image/svg+xml",
-                        purpose: "any",
-                    },
-                    {
-                        src: "/icon-192.png",
-                        sizes: "192x192",
-                        type: "image/png",
-                        purpose: "any",
-                    },
-                    {
-                        src: "/icon-512.png",
-                        sizes: "512x512",
-                        type: "image/png",
-                        purpose: "maskable",
-                    },
-                ],
-                shortcuts: [
-                    {
-                        name: "Pentest Mode",
-                        short_name: "Pentest",
-                        description: "Open Dani AI in pentest profile",
-                        url: "/?profile=pentest",
-                        icons: [{src: "/favicon.svg", sizes: "any"}],
-                    },
-                    {
-                        name: "OSINT Mode",
-                        short_name: "OSINT",
-                        description: "Open Dani AI in OSINT profile",
-                        url: "/?profile=osint",
-                        icons: [{src: "/favicon.svg", sizes: "any"}],
-                    },
-                ],
-            },
+
+            // Update setiap kali user buka app dan ada versi baru di server
             workbox: {
-                // cache semua asset utama
+                // Langsung claim semua client tanpa tunggu reload
+                clientsClaim: true,
+                skipWaiting: true,
+
+                // Cache strategy
                 globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
-                // network first untuk API calls, cache first untuk assets
+
+                // Network-first untuk API calls — jangan cache
                 runtimeCaching: [
+                    {
+                        urlPattern: /^https:\/\/.*\/api\/.*/i,
+                        handler: "NetworkOnly",
+                    },
                     {
                         urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
                         handler: "CacheFirst",
                         options: {
-                            cacheName: "google-fonts-cache",
+                            cacheName: "google-fonts",
                             expiration: {maxEntries: 10, maxAgeSeconds: 60 * 60 * 24 * 365},
-                            cacheableResponse: {statuses: [0, 200]},
-                        },
-                    },
-                    {
-                        urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
-                        handler: "CacheFirst",
-                        options: {
-                            cacheName: "gstatic-fonts-cache",
-                            expiration: {maxEntries: 10, maxAgeSeconds: 60 * 60 * 24 * 365},
-                            cacheableResponse: {statuses: [0, 200]},
-                        },
-                    },
-                    {
-                        urlPattern: /\/api\/.*/i,
-                        handler: "NetworkFirst",
-                        options: {
-                            cacheName: "api-cache",
-                            networkTimeoutSeconds: 10,
-                            expiration: {maxEntries: 50, maxAgeSeconds: 60 * 60},
-                            cacheableResponse: {statuses: [0, 200]},
                         },
                     },
                 ],
             },
+
+            // Manifest untuk install di HP
+            manifest: {
+                name: "Dani AI — Security Terminal",
+                short_name: "Dani AI",
+                description: "AI-powered security research & educational assistant",
+                theme_color: "#0c0e12",
+                background_color: "#0c0e12",
+                display: "standalone",
+                orientation: "portrait",
+                scope: "/",
+                start_url: "/",
+                icons: [
+                    {src: "/favicon.svg", sizes: "any", type: "image/svg+xml", purpose: "any maskable"},
+                    {src: "/icon-192.png", sizes: "192x192", type: "image/png"},
+                    {src: "/icon-512.png", sizes: "512x512", type: "image/png"},
+                ],
+            },
+
+            // Dev mode — aktifkan PWA di development juga
             devOptions: {
-                enabled: false, // matiin di dev biar ga ribet
+                enabled: false, // set true kalau mau test SW di localhost
             },
         }),
     ],
+
     server: {
         host: "0.0.0.0",
         port: 5173,
         proxy: {
             "/api": {
-                target: process.env.VITE_API_URL || "http://localhost:3001",
+                target: "http://localhost:3001",
                 changeOrigin: true,
             },
         },
