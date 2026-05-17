@@ -6,6 +6,7 @@ import {useTimer} from "./hooks/useTimer";
 import {MessageBubble} from "./components/MessageBubble";
 import {PROFILES, SHORTCUTS} from "./lib/profiles";
 import {checkHealth} from "./lib/api";
+import {AuthButton} from "./components/AuthButton";
 import type {ProfileKey} from "./types";
 import "./App.css";
 
@@ -138,6 +139,7 @@ export default function App() {
                 <button className="nav-doc-btn" onClick={() => setDrawerOpen(true)}>
                     ☰ docs
                 </button>
+                <AuthButton />
             </nav>
 
             <div className="shell">
