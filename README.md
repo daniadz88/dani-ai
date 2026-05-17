@@ -2,6 +2,8 @@
 
 <div align="center">
 
+<img src="https://raw.githubusercontent.com/daniadz88/dani-ai/main/frontend/public/favicon.svg" width="120" height="120" alt="Dani AI Logo"/>
+
 ```
 ██████╗  █████╗ ███╗   ██╗██╗     █████╗ ██╗
 ██╔══██╗██╔══██╗████╗  ██║██║    ██╔══██╗██║
