@@ -11,42 +11,69 @@
 ██║  ██║██╔══██║██║╚██╗██║██║    ██╔══██║██║
 ██████╔╝██║  ██║██║ ╚████║██║    ██║  ██║██║
 ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═══╝╚═╝    ╚═╝  ╚═╝╚═╝
+
         [ Security Research Terminal ]
         [ by: github.com/daniadz88  ]
         [ powered by: LLaMA 3.3 70B ]
 ```
 
-![Backend](https://img.shields.io/badge/Backend-NestJS-ea2845?style=for-the-badge&logo=nestjs&logoColor=white)
-![Frontend](https://img.shields.io/badge/Frontend-React%2018%20%2B%20Vite-61dafb?style=for-the-badge&logo=react&logoColor=black)
-![AI](https://img.shields.io/badge/AI-Groq%20LLaMA%203.3%2070B-f55036?style=for-the-badge&logo=meta&logoColor=white)
-![Deploy](https://img.shields.io/badge/Deploy-Vercel%20Serverless-000?style=for-the-badge&logo=vercel&logoColor=white)
-![DB](https://img.shields.io/badge/Database-Supabase-3ecf8e?style=for-the-badge&logo=supabase&logoColor=white)
-![Lang](https://img.shields.io/badge/Language-TypeScript-3178c6?style=for-the-badge&logo=typescript&logoColor=white)
+![Made with NestJS](https://img.shields.io/badge/Backend-NestJS-ea2845?style=for-the-badge&logo=nestjs&logoColor=white)
+![Made with React](https://img.shields.io/badge/Frontend-React-61dafb?style=for-the-badge&logo=react&logoColor=black)
+![Powered by Groq](https://img.shields.io/badge/AI-Groq%20LLaMA%203.3-f55036?style=for-the-badge&logo=meta&logoColor=white)
+![TypeScript](https://img.shields.io/badge/Language-TypeScript-3178c6?style=for-the-badge&logo=typescript&logoColor=white)
+![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)
 
-**AI-powered security research assistant untuk ethical hacking, CTF, dan riset keamanan.**
+**AI-powered security research assistant khusus buat ethical hacking, CTF, dan riset keamanan.**
 
-[🚀 Quick Start](#-quick-start) · [📖 API Docs](#-api-endpoints) · [⚠️ Disclaimer](#%EF%B8%8F-disclaimer)
+[🚀 Quick Start](#-quick-start) · [📖 Dokumentasi](#-api-endpoints) · [⚠️ Disclaimer](#%EF%B8%8F-disclaimer--legal-notice)
 
 </div>
 
 ---
 
-## ⚠️ Disclaimer
+## ⚠️ DISCLAIMER & LEGAL NOTICE
 
-> Gunakan **hanya** untuk keperluan legal: ethical hacking pada sistem yang Anda miliki/izini, CTF, riset, edukasi. Developer tidak bertanggung jawab atas penyalahgunaan.
+> **BACA INI SEBELUM MENGGUNAKAN**
+
+```
+MIT License — Copyright (c) 2025 daniadz88
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the Software, subject to the following conditions:
+```
+
+### 🔴 Penggunaan yang Dilarang
+
+Proyek ini dibuat **SEMATA-MATA** untuk keperluan:
+- ✅ Ethical hacking & penetration testing pada sistem yang **Anda miliki** atau **sudah mendapat izin tertulis**
+- ✅ Riset keamanan siber dan akademik
+- ✅ CTF (Capture The Flag) competition
+- ✅ Edukasi dan pembelajaran keamanan informasi
+- ✅ Bug bounty program resmi
+
+**Developer (daniadz88) TIDAK BERTANGGUNG JAWAB atas:**
+- ❌ Penyalahgunaan tool ini untuk aktivitas ilegal
+- ❌ Akses tidak sah ke sistem orang lain
+- ❌ Kerusakan data, sistem, atau infrastruktur pihak ketiga
+- ❌ Segala bentuk kejahatan siber yang dilakukan menggunakan tool ini
+- ❌ Pelanggaran hukum siber di yurisdiksi manapun (UU ITE Indonesia, CFAA USA, dll)
+
+> **Dengan menggunakan, mengkloning, atau mendeploy proyek ini, Anda setuju bahwa segala konsekuensi hukum akibat penyalahgunaan adalah tanggung jawab Anda sepenuhnya.**
 
 ---
 
 ## 🧠 Tentang Dani AI
 
-Dani AI adalah AI chatbot berbasis terminal yang dirancang sebagai **asisten riset keamanan**. Ditenagai **LLaMA 3.3 70B** via Groq API, dengan 15 mode spesialisasi:
+Dani AI adalah terminal chatbot berbasis AI yang dirancang sebagai **asisten riset keamanan**. Ditenagai oleh **LLaMA 3.3 70B** via Groq API, Dani AI memiliki 5 mode spesialisasi:
 
-| Kategori | Profile |
-|----------|---------|
-| 🔐 **Security** | pentest · osint · ctf · script · aidefense |
-| 💻 **Tech** | linux · networking · coding · data · devops |
-| 📚 **Education** | math · english |
-| 🧩 **Lifestyle** | productivity · finance · creative |
+| Profile | Fokus |
+|---------|-------|
+| 🔴 **pentest** | Penetration testing, exploits, vulnerability assessment |
+| 🔵 **osint** | Reconnaissance, footprinting, intel gathering |
+| 🏴 **ctf** | CTF solving, writeup-style hints |
+| 🟢 **script** | Python / Bash security scripting & automation |
+| 🤖 **ai-def** | AI security, OWASP LLM Top 10, prompt injection defense |
 
 ---
 
@@ -55,26 +82,25 @@ Dani AI adalah AI chatbot berbasis terminal yang dirancang sebagai **asisten ris
 ### Prerequisites
 - Node.js 18+
 - Groq API Key → [console.groq.com](https://console.groq.com)
-- Supabase project → [supabase.com](https://supabase.com)
 
-### 1. Clone
+### 1. Clone & Setup
 
 ```bash
 git clone https://github.com/daniadz88/dani-ai.git
 cd dani-ai
 ```
 
-### 2. Backend (Express + TypeScript)
+### 2. Backend (NestJS)
 
 ```bash
 cd backend
 npm install
 
-# Buat .env
+# Buat file .env
 echo "GROQ_API_KEY=gsk_xxxxxxxx" > .env
 echo "PORT=3001" >> .env
 
-npm run dev
+npm run start:dev
 # → http://localhost:3001
 ```
 
@@ -83,12 +109,6 @@ npm run dev
 ```bash
 cd frontend
 npm install
-
-# Buat .env.local
-echo "VITE_API_URL=http://localhost:3001" > .env.local
-echo "VITE_SUPABASE_URL=https://xxx.supabase.co" >> .env.local
-echo "VITE_SUPABASE_ANON_KEY=eyJ..." >> .env.local
-
 npm run dev
 # → http://localhost:5173
 ```
@@ -99,43 +119,49 @@ npm run dev
 
 ```
 dani-ai/
-├── backend/
+├── backend/                  ← NestJS
 │   ├── src/
-│   │   ├── main.ts               ← Express serverless handler
-│   │   └── config/
-│   │       └── dani.config.ts    ← 15 profiles & system prompts
-│   └── vercel.json
-└── frontend/
+│   │   ├── main.ts
+│   │   ├── app.module.ts
+│   │   ├── config/
+│   │   │   └── dani.config.ts    ← Profiles & system prompts
+│   │   ├── chat/
+│   │   │   ├── chat.controller.ts
+│   │   │   ├── chat.service.ts
+│   │   │   └── chat.module.ts
+│   │   └── health/
+│   │       └── health.controller.ts
+│   └── package.json
+└── frontend/                 ← React + Vite
     ├── src/
     │   ├── App.tsx
     │   ├── hooks/
-    │   │   ├── useChat.ts         ← chat logic + Supabase session
+    │   │   ├── useChat.ts
     │   │   └── useTimer.ts
     │   ├── components/
-    │   │   └── MessageBubble.tsx  ← markdown + syntax highlight
+    │   │   └── MessageBubble.tsx
     │   └── lib/
     │       ├── api.ts
-    │       ├── supabase.ts
     │       └── profiles.ts
-    └── vite.config.ts             ← PWA config
+    └── vite.config.ts
 ```
 
 ---
 
 ## 🔌 API Endpoints
 
-Base URL: `https://dani-ai-eph8.vercel.app`
+Base URL: `http://localhost:3001`
 
 | Method | Endpoint | Deskripsi |
 |--------|----------|-----------|
-| `GET` | `/api/health` | Status server & API key |
+| `GET` | `/api/health` | Cek status server & API key |
 | `POST` | `/api/chat` | Kirim pesan ke AI |
-| `GET` | `/api/profiles` | List semua profile |
+| `GET` | `/api/profiles` | List semua profile tersedia |
 
 ### Contoh Request
 
 ```bash
-curl -X POST https://dani-ai-eph8.vercel.app/api/chat \
+curl -X POST http://localhost:3001/api/chat \
   -H "Content-Type: application/json" \
   -d '{
     "message": "Gimana cara nmap stealth scan?",
@@ -144,44 +170,38 @@ curl -X POST https://dani-ai-eph8.vercel.app/api/chat \
   }'
 ```
 
-### Response
-
-```json
-{
-  "reply": "Untuk stealth scan dengan nmap...",
-  "profile": "pentest",
-  "model": "llama-3.3-70b-versatile"
-}
-```
-
 ---
 
 ## 🛠️ Tech Stack
 
 | Layer | Technology |
 |-------|-----------|
-| Backend (NestJS + TypeScript)) |
+| Backend | NestJS + TypeScript |
 | Frontend | React 18 + Vite + TypeScript |
 | AI Model | LLaMA 3.3 70B via Groq |
-| Database | Supabase (chat history) |
-| Auth | Supabase Auth (Google OAuth) |
-| PWA | vite-plugin-pwa |
-| Styling | Pure CSS + CSS Variables |
+| Styling | Pure CSS (terminal aesthetic) |
+| Font | Geist Mono |
 
 ---
 
 ## 📜 License
 
-MIT License — lihat [LICENSE](LICENSE)
+MIT License — lihat [LICENSE](LICENSE) untuk detail lengkap.
 
 ---
 
 <div align="center">
 
-Dibuat untuk **edukasi & riset keamanan** oleh [daniadz88](https://github.com/daniadz88)
+Dibuat untuk keperluan **edukasi & riset keamanan** oleh [daniadz88](https://github.com/daniadz88)
 
 **Gunakan dengan bijak. Hack ethically.**
 
+---
+
 [![Typing SVG](https://readme-typing-svg.demolab.com?font=Fira+Code&size=14&duration=3000&pause=1000&color=8B6EF5&center=true&vCenter=true&multiline=true&width=600&height=80&lines=dani%40sec%3A~%24+whoami;daniadz88+%7C+security+researcher+%7C+builder)](https://github.com/daniadz88)
+
+[![Typing SVG](https://readme-typing-svg.demolab.com?font=Fira+Code&size=13&duration=2000&pause=500&color=3DDC84&center=true&vCenter=true&multiline=true&width=600&height=100&lines=dani%40sec%3A~%24+cat+disclaimer.txt;%5B!%5D+For+educational+%26+ethical+use+ONLY.;%5B!%5D+Unauthorized+access+is+illegal.;%5B!%5D+Dev+not+responsible+for+misuse.)](https://github.com/daniadz88)
+
+<img src="https://capsule-render.vercel.app/api?type=waving&color=8B6EF5&height=80&section=footer&text=daniadz88&fontSize=20&fontColor=ffffff&animation=twinkling&fontAlignY=70" width="100%"/>
 
 </div>
