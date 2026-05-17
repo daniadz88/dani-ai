@@ -1,5 +1,4 @@
 // src/App.tsx
-
 import {useState, useEffect, useRef, useCallback} from "react";
 import {useChat} from "./hooks/useChat";
 import {useTimer} from "./hooks/useTimer";
@@ -31,11 +30,19 @@ const THEMES = [
 ];
 
 function useTheme() {
-    const [theme, setTheme] = useState(() => localStorage.getItem("dani-theme") || "midnight");
+    const [theme, setTheme] = useState(() => {
+        try {
+            return localStorage.getItem("dani-theme") || "midnight";
+        } catch {
+            return "midnight";
+        }
+    });
     const [pickerOpen, setPickerOpen] = useState(false);
     useEffect(() => {
         document.documentElement.setAttribute("data-theme", theme);
-        localStorage.setItem("dani-theme", theme);
+        try {
+            localStorage.setItem("dani-theme", theme);
+        } catch {}
     }, [theme]);
     return {theme, setTheme, pickerOpen, setPickerOpen};
 }
@@ -48,13 +55,23 @@ export default function App() {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [historyOpen, setHistoryOpen] = useState(false);
     const [userToken, setUserToken] = useState<string | null>(null);
+    const [isMobile, setIsMobile] = useState(false);
+
     const chatBodyRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLTextAreaElement>(null);
     const timer = useTimer();
     const {theme, setTheme, pickerOpen, setPickerOpen} = useTheme();
     const {messages, isLoading, profile, switchProfile, send} = useChat("pentest");
 
-    // get supabase token for history
+    // Detect mobile
+    useEffect(() => {
+        const check = () => setIsMobile(window.innerWidth <= 900);
+        check();
+        window.addEventListener("resize", check);
+        return () => window.removeEventListener("resize", check);
+    }, []);
+
+    // Supabase auth token
     useEffect(() => {
         supabase.auth.getSession().then(({data}) => {
             setUserToken(data.session?.access_token ?? null);
@@ -67,11 +84,13 @@ export default function App() {
         return () => subscription.unsubscribe();
     }, []);
 
+    // Auto scroll
     useEffect(() => {
         const el = chatBodyRef.current;
         if (el) el.scrollTop = el.scrollHeight;
     }, [messages, isLoading]);
 
+    // Auto focus input
     useEffect(() => {
         if (!isLoading) setTimeout(() => inputRef.current?.focus(), 50);
     }, [isLoading]);
@@ -80,12 +99,14 @@ export default function App() {
         setMsgCount(messages.filter((m) => m.type === "user").length);
     }, [messages]);
 
+    // Health check
     useEffect(() => {
         checkHealth()
         .then((data) => setConnStatus(data.api_key === "missing" ? "error" : "online"))
         .catch(() => setConnStatus("error"));
     }, []);
 
+    // Close theme picker on outside click
     useEffect(() => {
         if (!pickerOpen) return;
         const handler = () => setPickerOpen(false);
@@ -97,6 +118,8 @@ export default function App() {
         if (!input.trim() || isLoading) return;
         const text = input;
         setInput("");
+        // Reset textarea height
+        if (inputRef.current) inputRef.current.style.height = "auto";
         await send(text);
     }, [input, isLoading, send]);
 
@@ -120,9 +143,13 @@ export default function App() {
 
     const currentTheme = THEMES.find((t) => t.id === theme) || THEMES[0];
 
+    // History: desktop = sidebar dalam shell, mobile = drawer overlay
+    const showDesktopHistory = historyOpen && userToken && !isMobile;
+    const showMobileHistory = historyOpen && userToken && isMobile;
+
     return (
         <>
-            {/* NAV */}
+            {/* ===== NAV ===== */}
             <nav className="nav">
                 <div className="nav-logo">
                     <em>Dani</em>AI <span className="nav-pill">BETA</span>
@@ -130,7 +157,7 @@ export default function App() {
 
                 <span className={`nav-conn ${connStatus}`}>{connLabel}</span>
 
-                {/* Theme picker di navbar */}
+                {/* Theme picker — desktop only */}
                 <div className="theme-picker-wrap" onClick={(e) => e.stopPropagation()}>
                     <button className="theme-picker-btn" onClick={() => setPickerOpen((p) => !p)}>
                         <span
@@ -166,7 +193,7 @@ export default function App() {
 
                 <AuthButton />
 
-                {/* History button — hanya muncul kalau sudah login */}
+                {/* History btn — desktop only */}
                 {userToken && (
                     <button
                         className={`nav-history-btn${historyOpen ? " active" : ""}`}
@@ -177,19 +204,21 @@ export default function App() {
                     </button>
                 )}
 
+                {/* Hamburger — mobile only */}
                 <button className="nav-ham" onClick={() => setMobileMenuOpen(true)} aria-label="Menu">
                     ☰
                 </button>
             </nav>
 
+            {/* ===== SHELL ===== */}
             <div className="shell">
-                {/* HISTORY SIDEBAR — kiri, desktop */}
-                {historyOpen && userToken && (
+                {/* History sidebar — desktop only, di dalam shell */}
+                {showDesktopHistory && (
                     <aside className="pane-history">
                         <HistoryPanel
-                            token={userToken}
+                            token={userToken!}
                             onLoad={(_session) => {
-                                // TODO: inject session messages ke chat
+                                // TODO: load session messages ke chat
                                 setHistoryOpen(false);
                             }}
                             onClose={() => setHistoryOpen(false)}
@@ -197,7 +226,7 @@ export default function App() {
                     </aside>
                 )}
 
-                {/* TERMINAL PANE */}
+                {/* Terminal pane */}
                 <section className="pane-terminal">
                     <div className="term-header">
                         <div className="term-header-top">
@@ -237,12 +266,12 @@ export default function App() {
                         </span>
                         <span className="ib-sep">·</span>
                         <span className="ib-badge ib-session">
-                            <span className="ib-flag">⚑</span>
-                            {timer}
+                            <span className="ib-flag">⚑</span> {timer}
                         </span>
                     </div>
 
                     <div className="chat-body" ref={chatBodyRef}>
+                        {/* Welcome message */}
                         <div className="msg-block">
                             <div className="msg-meta">
                                 <span className="m-ai">dani-ai</span>
@@ -267,9 +296,9 @@ export default function App() {
                             <MessageBubble key={msg.id} msg={msg} />
                         ))}
 
-                        <div className={`typing-row${isLoading ? " show" : ""}`}>
+                        <div className="typing-row">
                             {isLoading && (
-                                <div className="typing show">
+                                <div className="typing">
                                     <div className="tdot" />
                                     <div className="tdot" />
                                     <div className="tdot" />
@@ -279,6 +308,7 @@ export default function App() {
                         </div>
                     </div>
 
+                    {/* Input */}
                     <div className="input-row">
                         <div className="input-box">
                             <span className="prompt-prefix">
@@ -300,6 +330,7 @@ export default function App() {
                                 placeholder="ketik pertanyaan... (Enter kirim, Shift+Enter baris baru)"
                                 disabled={isLoading}
                                 autoComplete="off"
+                                autoFocus
                             />
                             <button className="send-btn" onClick={handleSend} disabled={isLoading} aria-label="Kirim">
                                 {isLoading ? "⏳" : "↑"}
@@ -310,7 +341,7 @@ export default function App() {
                 </section>
             </div>
 
-            {/* MOBILE MENU */}
+            {/* ===== MOBILE MENU ===== */}
             <div
                 className={`mobile-menu-overlay${mobileMenuOpen ? " open" : ""}`}
                 onClick={() => setMobileMenuOpen(false)}
@@ -379,12 +410,14 @@ export default function App() {
                                 className="mm-item"
                                 onClick={() => {
                                     setMobileMenuOpen(false);
-                                    setHistoryOpen(true);
+                                    // Tunggu menu tutup dulu baru buka drawer
+                                    setTimeout(() => setHistoryOpen(true), 300);
                                 }}
                             >
                                 <span className="mm-item-icon">⧗</span>
                                 <span>
-                                    Chat History<span className="mm-item-desc">Lihat percakapan sebelumnya</span>
+                                    Chat History
+                                    <span className="mm-item-desc">Lihat percakapan sebelumnya</span>
                                 </span>
                             </button>
                         </>
@@ -399,17 +432,15 @@ export default function App() {
                 </div>
             </div>
 
-            {/* HISTORY DRAWER — mobile (slide dari kiri) */}
-            {historyOpen && userToken && (
+            {/* ===== HISTORY DRAWER — mobile overlay ===== */}
+            {showMobileHistory && (
                 <>
-                    <div
-                        className="drawer-overlay open pane-history-mobile-overlay"
-                        onClick={() => setHistoryOpen(false)}
-                    />
-                    <div className="drawer drawer-left open">
+                    <div className="drawer-overlay open" onClick={() => setHistoryOpen(false)} />
+                    <div className="drawer-left open">
                         <HistoryPanel
-                            token={userToken}
+                            token={userToken!}
                             onLoad={(_session) => {
+                                // TODO: load session messages ke chat
                                 setHistoryOpen(false);
                             }}
                             onClose={() => setHistoryOpen(false)}
