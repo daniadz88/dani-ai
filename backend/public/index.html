@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Dani AI — API</title>
+        <style>
+            @import url("https://fonts.googleapis.com/css2?family=Geist+Mono:wght@300;400;500;600&display=swap");
+
+            *,
+            *::before,
+            *::after {
+                box-sizing: border-box;
+                margin: 0;
+                padding: 0;
+            }
+
+            :root {
+                --bg: #0c0e12;
+                --bg2: #111318;
+                --bg3: #161921;
+                --border: rgba(255, 255, 255, 0.07);
+                --accent: #7c3aed;
+                --accent2: #a78bfa;
+                --green: #22c55e;
+                --red: #ef4444;
+                --text: #e2e8f0;
+                --text2: #94a3b8;
+                --text3: #475569;
+            }
+
+            body {
+                background: var(--bg);
+                color: var(--text);
+                font-family: "Geist Mono", monospace;
+                min-height: 100vh;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 24px;
+            }
+
+            .card {
+                width: 100%;
+                max-width: 640px;
+                background: var(--bg2);
+                border: 1px solid var(--border);
+                border-radius: 16px;
+                overflow: hidden;
+            }
+
+            /* Header */
+            .card-header {
+                padding: 28px 28px 22px;
+                border-bottom: 1px solid var(--border);
+                background: linear-gradient(135deg, rgba(124, 58, 237, 0.08), transparent);
+            }
+            .logo-row {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                margin-bottom: 12px;
+            }
+            .logo-icon {
+                width: 40px;
+                height: 40px;
+                background: var(--accent);
+                border-radius: 10px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 18px;
+                font-weight: 700;
+                color: #fff;
+                box-shadow: 0 0 20px rgba(124, 58, 237, 0.4);
+            }
+            .logo-text {
+                font-size: 22px;
+                font-weight: 600;
+                letter-spacing: -0.02em;
+            }
+            .logo-text em {
+                font-style: normal;
+                color: var(--accent2);
+            }
+            .logo-badge {
+                margin-left: auto;
+                padding: 3px 10px;
+                border-radius: 20px;
+                background: rgba(34, 197, 94, 0.12);
+                border: 1px solid rgba(34, 197, 94, 0.25);
+                color: var(--green);
+                font-size: 11px;
+                font-weight: 600;
+                display: flex;
+                align-items: center;
+                gap: 5px;
+            }
+            .dot-live {
+                width: 6px;
+                height: 6px;
+                border-radius: 50%;
+                background: var(--green);
+                animation: pulse 2s ease-in-out infinite;
+            }
+            @keyframes pulse {
+                0%,
+                100% {
+                    opacity: 1;
+                }
+                50% {
+                    opacity: 0.4;
+                }
+            }
+
+            .card-desc {
+                font-size: 13px;
+                color: var(--text2);
+                line-height: 1.6;
+            }
+
+            /* Endpoints */
+            .card-body {
+                padding: 20px 28px;
+            }
+            .section-label {
+                font-size: 10px;
+                font-weight: 700;
+                letter-spacing: 0.1em;
+                color: var(--text3);
+                text-transform: uppercase;
+                margin-bottom: 12px;
+            }
+            .endpoints {
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+                margin-bottom: 24px;
+            }
+            .ep {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                padding: 10px 14px;
+                background: var(--bg3);
+                border: 1px solid var(--border);
+                border-radius: 8px;
+                transition: border-color 0.15s;
+            }
+            .ep:hover {
+                border-color: rgba(255, 255, 255, 0.12);
+            }
+            .method {
+                font-size: 10px;
+                font-weight: 700;
+                letter-spacing: 0.06em;
+                padding: 2px 7px;
+                border-radius: 5px;
+                flex-shrink: 0;
+            }
+            .method.get {
+                background: rgba(34, 197, 94, 0.12);
+                color: var(--green);
+            }
+            .method.post {
+                background: rgba(124, 58, 237, 0.15);
+                color: var(--accent2);
+            }
+            .ep-path {
+                font-size: 13px;
+                color: var(--text);
+                font-weight: 500;
+            }
+            .ep-desc {
+                font-size: 12px;
+                color: var(--text3);
+                margin-left: auto;
+            }
+
+            /* Stack */
+            .stack {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 6px;
+                margin-bottom: 24px;
+            }
+            .tag {
+                padding: 4px 10px;
+                border-radius: 6px;
+                font-size: 11px;
+                font-weight: 500;
+                background: var(--bg3);
+                border: 1px solid var(--border);
+                color: var(--text2);
+            }
+            .tag.accent {
+                border-color: rgba(124, 58, 237, 0.3);
+                color: var(--accent2);
+            }
+
+            /* Example */
+            .example {
+                background: #0d0f14;
+                border: 1px solid var(--border);
+                border-radius: 10px;
+                overflow: hidden;
+                margin-bottom: 20px;
+            }
+            .example-header {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 7px 14px;
+                background: rgba(255, 255, 255, 0.03);
+                border-bottom: 1px solid var(--border);
+                font-size: 11px;
+                font-weight: 600;
+                color: var(--accent2);
+                letter-spacing: 0.06em;
+            }
+            .copy-btn {
+                padding: 2px 8px;
+                border-radius: 4px;
+                border: 1px solid var(--border);
+                background: transparent;
+                color: var(--text3);
+                font-size: 10px;
+                cursor: pointer;
+                font-family: inherit;
+                transition: all 0.15s;
+            }
+            .copy-btn:hover {
+                color: var(--accent2);
+                border-color: rgba(124, 58, 237, 0.4);
+            }
+            pre {
+                padding: 14px 16px;
+                font-size: 12px;
+                line-height: 1.7;
+                overflow-x: auto;
+                color: #c9d1d9;
+                font-family: inherit;
+            }
+            .kw {
+                color: #c792ea;
+            }
+            .str {
+                color: #c3e88d;
+            }
+            .num {
+                color: #82aaff;
+            }
+            .key {
+                color: #f07178;
+            }
+
+            /* Footer */
+            .card-footer {
+                padding: 14px 28px;
+                border-top: 1px solid var(--border);
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                font-size: 11px;
+                color: var(--text3);
+            }
+            .card-footer a {
+                color: var(--accent2);
+                text-decoration: none;
+            }
+            .card-footer a:hover {
+                text-decoration: underline;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="card">
+            <div class="card-header">
+                <div class="logo-row">
+                    <div class="logo-icon">D</div>
+                    <span class="logo-text"><em>Dani</em>AI</span>
+                    <span class="logo-badge"><span class="dot-live"></span>live</span>
+                </div>
+                <p class="card-desc">
+                    Security research AI assistant — powered by LLaMA 3.3 70B via Groq.<br />Supports pentest, OSINT,
+                    CTF, scripting, networking & more.
+                </p>
+            </div>
+
+            <div class="card-body">
+                <p class="section-label">Endpoints</p>
+                <div class="endpoints">
+                    <div class="ep">
+                        <span class="method get">GET</span>
+                        <span class="ep-path">/api/health</span>
+                        <span class="ep-desc">Status &amp; API key check</span>
+                    </div>
+                    <div class="ep">
+                        <span class="method post">POST</span>
+                        <span class="ep-path">/api/chat</span>
+                        <span class="ep-desc">Send message to AI</span>
+                    </div>
+                    <div class="ep">
+                        <span class="method get">GET</span>
+                        <span class="ep-path">/api/profiles</span>
+                        <span class="ep-desc">List available profiles</span>
+                    </div>
+                </div>
+
+                <p class="section-label">Stack</p>
+                <div class="stack">
+                    <span class="tag accent">Express + TypeScript</span>
+                    <span class="tag accent">Vercel Serverless</span>
+                    <span class="tag">LLaMA 3.3 70B</span>
+                    <span class="tag">Groq API</span>
+                    <span class="tag">Supabase</span>
+                    <span class="tag">React 18 + Vite</span>
+                </div>
+
+                <p class="section-label">Example Request</p>
+                <div class="example">
+                    <div class="example-header">
+                        <span>BASH</span>
+                        <button class="copy-btn" onclick="copyEx(this)">copy</button>
+                    </div>
+                    <pre><span class="kw">curl</span> -X POST <span class="str">https://dani-ai-eph8.vercel.app/api/chat</span> \
+  -H <span class="str">"Content-Type: application/json"</span> \
+  -d <span class="str">'{
+    "message": "Gimana cara nmap stealth scan?",
+    "profile": "pentest",
+    "history": []
+  }'</span></pre>
+                </div>
+            </div>
+
+            <div class="card-footer">
+                <span
+                    >by <a href="https://github.com/daniadz88" target="_blank">daniadz88</a> · for educational &amp;
+                    ethical use only</span
+                >
+                <a href="https://dani-ai-olive.vercel.app" target="_blank">→ open app</a>
+            </div>
+        </div>
+
+        <script>
+            function copyEx(btn) {
+                const code = btn.closest(".example").querySelector("pre").innerText;
+                navigator.clipboard?.writeText(code).then(() => {
+                    btn.textContent = "✓ ok";
+                    setTimeout(() => (btn.textContent = "copy"), 1800);
+                });
+            }
+        </script>
+    </body>
+</html>

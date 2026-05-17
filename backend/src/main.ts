@@ -1,6 +1,7 @@
 // backend/src/main.ts
 import express from "express";
 import cors from "cors";
+import path from "path";
 import {buildMessages, PROFILES, MODEL, getProfileList} from "./config/dani.config";
 import OpenAI from "openai";
 
@@ -14,6 +15,11 @@ app.use(
         credentials: true,
     })
 );
+
+app.use(express.static(path.join(__dirname, "../public")));
+app.get("/", (_req, res) => {
+    res.sendFile(path.join(__dirname, "../public/index.html"));
+});
 
 app.use(express.json());
 
