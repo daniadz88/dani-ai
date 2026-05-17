@@ -1,4 +1,4 @@
-// src/App.tsx
+// src/App.tsx — Dani AI Full Redesign
 
 import {useState, useEffect, useRef, useCallback} from "react";
 import {useChat} from "./hooks/useChat";
@@ -10,29 +10,36 @@ import {AuthButton} from "./components/AuthButton";
 import type {ProfileKey} from "./types";
 import "./App.css";
 
-// ===================== THEME HOOK =====================
+// ===================== THEMES =====================
+const THEMES = [
+    {id: "midnight", label: "Midnight", color: "#6c8ef5"},
+    {id: "forest", label: "Forest", color: "#3ddc84"},
+    {id: "ocean", label: "Ocean", color: "#4ec9e8"},
+    {id: "crimson", label: "Crimson", color: "#f06c6c"},
+    {id: "aurora", label: "Aurora", color: "#a78bfa"},
+    {id: "sunset", label: "Sunset", color: "#f5a623"},
+    {id: "matrix", label: "Matrix", color: "#00ff41"},
+    {id: "nord", label: "Nord", color: "#88c0d0"},
+    {id: "rose", label: "Rose", color: "#f472b6"},
+    {id: "slate", label: "Slate", color: "#94a3b8"},
+    {id: "copper", label: "Copper", color: "#cd7f32"},
+    {id: "ice", label: "Ice", color: "#3b6ef5"},
+    {id: "toxic", label: "Toxic", color: "#aaff00"},
+    {id: "void", label: "Void", color: "#ffffff"},
+];
+
 function useTheme() {
-    const [theme, setTheme] = useState<"dark" | "light">(() => {
-        const saved = localStorage.getItem("dani-theme");
-        if (saved === "light" || saved === "dark") return saved;
-        return window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+    const [theme, setTheme] = useState(() => {
+        return localStorage.getItem("dani-theme") || "midnight";
     });
+    const [pickerOpen, setPickerOpen] = useState(false);
 
     useEffect(() => {
-        const root = document.documentElement;
-        if (theme === "light") {
-            root.classList.add("light");
-        } else {
-            root.classList.remove("light");
-        }
+        document.documentElement.setAttribute("data-theme", theme);
         localStorage.setItem("dani-theme", theme);
     }, [theme]);
 
-    const toggle = useCallback(() => {
-        setTheme((t) => (t === "dark" ? "light" : "dark"));
-    }, []);
-
-    return {theme, toggle};
+    return {theme, setTheme, pickerOpen, setPickerOpen};
 }
 
 // ===================== APP =====================
@@ -43,21 +50,23 @@ export default function App() {
     const [drawerOpen, setDrawerOpen] = useState(false);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const chatBodyRef = useRef<HTMLDivElement>(null);
-    const inputRef = useRef<HTMLInputElement>(null);
+    const inputRef = useRef<HTMLTextAreaElement>(null);
     const timer = useTimer();
-    const {theme, toggle: toggleTheme} = useTheme();
+    const {theme, setTheme, pickerOpen, setPickerOpen} = useTheme();
 
     const {messages, isLoading, profile, switchProfile, send} = useChat("pentest");
 
-    // scroll to bottom on new messages
+    // auto-scroll
     useEffect(() => {
         const el = chatBodyRef.current;
         if (el) el.scrollTop = el.scrollHeight;
     }, [messages, isLoading]);
 
-    // focus input when not loading
+    // auto-focus input
     useEffect(() => {
-        if (!isLoading) inputRef.current?.focus();
+        if (!isLoading) {
+            setTimeout(() => inputRef.current?.focus(), 50);
+        }
     }, [isLoading]);
 
     // count user messages
@@ -68,11 +77,17 @@ export default function App() {
     // health check
     useEffect(() => {
         checkHealth()
-        .then((data) => {
-            setConnStatus(data.api_key === "missing" ? "error" : "online");
-        })
+        .then((data) => setConnStatus(data.api_key === "missing" ? "error" : "online"))
         .catch(() => setConnStatus("error"));
     }, []);
+
+    // close picker on outside click
+    useEffect(() => {
+        if (!pickerOpen) return;
+        const handler = () => setPickerOpen(false);
+        setTimeout(() => document.addEventListener("click", handler), 0);
+        return () => document.removeEventListener("click", handler);
+    }, [pickerOpen]);
 
     const handleSend = useCallback(async () => {
         if (!input.trim() || isLoading) return;
@@ -81,7 +96,7 @@ export default function App() {
         await send(text);
     }, [input, isLoading, send]);
 
-    const handleKey = (e: React.KeyboardEvent) => {
+    const handleKey = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
         if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();
             handleSend();
@@ -90,7 +105,7 @@ export default function App() {
 
     const fillInput = (text: string) => {
         setInput(text);
-        inputRef.current?.focus();
+        setTimeout(() => inputRef.current?.focus(), 50);
     };
 
     const connLabel = {
@@ -99,8 +114,7 @@ export default function App() {
         error: "● offline",
     }[connStatus];
 
-    const closeDrawer = () => setDrawerOpen(false);
-    const closeMobileMenu = () => setMobileMenuOpen(false);
+    const currentTheme = THEMES.find((t) => t.id === theme) || THEMES[0];
 
     return (
         <>
@@ -120,26 +134,51 @@ export default function App() {
                         profiles
                     </a>
                 </div>
+
                 <span className={`nav-conn ${connStatus}`}>{connLabel}</span>
 
-                {/* Theme toggle */}
-                <button
-                    className="theme-btn"
-                    onClick={toggleTheme}
-                    title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-                    aria-label="Toggle theme"
-                >
-                    {theme === "dark" ? "☀" : "☽"}
-                </button>
+                {/* Theme picker */}
+                <div className="theme-picker-wrap" onClick={(e) => e.stopPropagation()}>
+                    <button className="theme-picker-btn" onClick={() => setPickerOpen((p) => !p)}>
+                        <span
+                            style={{
+                                width: 10,
+                                height: 10,
+                                borderRadius: "50%",
+                                background: currentTheme.color,
+                                display: "inline-block",
+                                border: "1px solid rgba(255,255,255,0.2)",
+                            }}
+                        />
+                        {currentTheme.label} ▾
+                    </button>
+                    {pickerOpen && (
+                        <div className="theme-dropdown">
+                            {THEMES.map((t) => (
+                                <button
+                                    key={t.id}
+                                    className={`theme-opt${theme === t.id ? " active" : ""}`}
+                                    onClick={() => {
+                                        setTheme(t.id);
+                                        setPickerOpen(false);
+                                    }}
+                                >
+                                    <span className="theme-dot" style={{background: t.color}} />
+                                    {t.label}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </div>
 
-                {/* hamburger — mobile: buka slide menu kiri | desktop: buka docs drawer */}
+                <AuthButton />
+
                 <button className="nav-ham" onClick={() => setMobileMenuOpen(true)} aria-label="Menu">
                     ☰
                 </button>
                 <button className="nav-doc-btn" onClick={() => setDrawerOpen(true)}>
                     ☰ docs
                 </button>
-                <AuthButton />
             </nav>
 
             <div className="shell">
@@ -168,9 +207,8 @@ export default function App() {
                         </div>
                     </div>
 
-                    {/* info bar — satu baris */}
+                    {/* info bar */}
                     <div className="info-bar">
-                        {/* status */}
                         <span className={`ib-badge ${connStatus === "online" ? "ib-online" : "ib-offline"}`}>
                             <span
                                 className="ib-dot"
@@ -178,22 +216,13 @@ export default function App() {
                             />
                             {connStatus === "online" ? "online" : "offline"}
                         </span>
-
                         <span className="ib-sep">·</span>
-
-                        {/* profile */}
                         <span className="ib-badge ib-profile">{profile}</span>
-
                         <span className="ib-sep">·</span>
-
-                        {/* pesan count */}
                         <span className="ib-badge" style={{color: "var(--text3)", borderColor: "var(--border)"}}>
                             {msgCount} pesan
                         </span>
-
                         <span className="ib-sep">·</span>
-
-                        {/* session timer dengan flag */}
                         <span className="ib-badge ib-session">
                             <span className="ib-flag">⚑</span>
                             {timer}
@@ -202,7 +231,6 @@ export default function App() {
 
                     {/* chat body */}
                     <div className="chat-body" ref={chatBodyRef}>
-                        {/* welcome */}
                         <div className="msg-block">
                             <div className="msg-meta">
                                 <span className="m-ai">dani-ai</span>
@@ -227,7 +255,6 @@ export default function App() {
                             <MessageBubble key={msg.id} msg={msg} />
                         ))}
 
-                        {/* typing indicator */}
                         <div className={`typing-row${isLoading ? " show" : ""}`}>
                             {isLoading && (
                                 <div className="typing show">
@@ -240,29 +267,35 @@ export default function App() {
                         </div>
                     </div>
 
-                    {/* input */}
+                    {/* input — Claude style */}
                     <div className="input-row">
-                        <span className="prompt">
-                            <span className="pu">dani</span>
-                            <span className="ph">@sec</span>
-                            <span style={{color: "var(--text3)"}}>:</span>
-                            <span className="pp">~</span>
-                            <span style={{color: "var(--text3)"}}>$ </span>
-                        </span>
-                        <input
-                            ref={inputRef}
-                            className="term-input"
-                            value={input}
-                            onChange={(e) => setInput(e.target.value)}
-                            onKeyDown={handleKey}
-                            placeholder="ketik pertanyaan..."
-                            disabled={isLoading}
-                            autoComplete="off"
-                            inputMode="text"
-                        />
-                        <button className="send-btn" onClick={handleSend} disabled={isLoading}>
-                            kirim ↵
-                        </button>
+                        <div className="input-box">
+                            <span className="prompt-prefix">
+                                <span className="pu">dani</span>
+                                <span className="ph">@sec</span>
+                                <span style={{color: "var(--text3)"}}>:~$ </span>
+                            </span>
+                            <textarea
+                                ref={inputRef}
+                                className="term-input"
+                                value={input}
+                                rows={1}
+                                onChange={(e) => {
+                                    setInput(e.target.value);
+                                    // auto-resize
+                                    e.target.style.height = "auto";
+                                    e.target.style.height = Math.min(e.target.scrollHeight, 120) + "px";
+                                }}
+                                onKeyDown={handleKey}
+                                placeholder="ketik pertanyaan... (Enter kirim, Shift+Enter baris baru)"
+                                disabled={isLoading}
+                                autoComplete="off"
+                            />
+                            <button className="send-btn" onClick={handleSend} disabled={isLoading} aria-label="Kirim">
+                                {isLoading ? "⏳" : "↑"}
+                            </button>
+                        </div>
+                        <div className="input-hint">Enter kirim · Shift+Enter baris baru</div>
                     </div>
                 </section>
 
@@ -277,14 +310,17 @@ export default function App() {
                 </aside>
             </div>
 
-            {/* MOBILE MENU — slide dari kiri */}
-            <div className={`mobile-menu-overlay${mobileMenuOpen ? " open" : ""}`} onClick={closeMobileMenu} />
+            {/* MOBILE MENU */}
+            <div
+                className={`mobile-menu-overlay${mobileMenuOpen ? " open" : ""}`}
+                onClick={() => setMobileMenuOpen(false)}
+            />
             <div className={`mobile-menu${mobileMenuOpen ? " open" : ""}`}>
                 <div className="mm-head">
                     <div className="mm-logo">
                         <em>Dani</em>AI
                     </div>
-                    <button className="mm-close" onClick={closeMobileMenu}>
+                    <button className="mm-close" onClick={() => setMobileMenuOpen(false)}>
                         ✕
                     </button>
                 </div>
@@ -296,7 +332,7 @@ export default function App() {
                             className={`mm-item${profile === p.key ? " active" : ""}`}
                             onClick={() => {
                                 switchProfile(p.key as ProfileKey);
-                                closeMobileMenu();
+                                setMobileMenuOpen(false);
                                 setTimeout(() => inputRef.current?.focus(), 100);
                             }}
                         >
@@ -309,12 +345,38 @@ export default function App() {
                     ))}
 
                     <hr className="mm-divider" />
-                    <div className="mm-section-lbl">Navigasi</div>
+                    <div className="mm-section-lbl">Tema (14)</div>
+                    {THEMES.map((t) => (
+                        <button
+                            key={t.id}
+                            className={`mm-item${theme === t.id ? " active" : ""}`}
+                            onClick={() => {
+                                setTheme(t.id);
+                                setMobileMenuOpen(false);
+                            }}
+                        >
+                            <span className="mm-item-icon">
+                                <span
+                                    style={{
+                                        width: 12,
+                                        height: 12,
+                                        borderRadius: "50%",
+                                        background: t.color,
+                                        display: "inline-block",
+                                        border: "1px solid rgba(255,255,255,0.2)",
+                                    }}
+                                />
+                            </span>
+                            <span>{t.label}</span>
+                        </button>
+                    ))}
 
+                    <hr className="mm-divider" />
+                    <div className="mm-section-lbl">Navigasi</div>
                     <button
                         className="mm-item"
                         onClick={() => {
-                            closeMobileMenu();
+                            setMobileMenuOpen(false);
                             setTimeout(() => inputRef.current?.focus(), 100);
                         }}
                     >
@@ -323,11 +385,10 @@ export default function App() {
                             Terminal<span className="mm-item-desc">Kembali ke chat</span>
                         </span>
                     </button>
-
                     <button
                         className="mm-item"
                         onClick={() => {
-                            closeMobileMenu();
+                            setMobileMenuOpen(false);
                             setDrawerOpen(true);
                         }}
                     >
@@ -336,19 +397,7 @@ export default function App() {
                             Dokumentasi<span className="mm-item-desc">Panduan & API reference</span>
                         </span>
                     </button>
-
-                    <hr className="mm-divider" />
-                    <div className="mm-section-lbl">Tampilan</div>
-
-                    <button className="mm-item" onClick={toggleTheme}>
-                        <span className="mm-item-icon">{theme === "dark" ? "☀" : "☽"}</span>
-                        <span>
-                            {theme === "dark" ? "Light Mode" : "Dark Mode"}
-                            <span className="mm-item-desc">Ganti tema tampilan</span>
-                        </span>
-                    </button>
                 </div>
-
                 <div className="mm-footer">
                     <div className="mm-footer-info">
                         <span>{profile}</span> · {connStatus === "online" ? "● online" : "● offline"}
@@ -358,14 +407,14 @@ export default function App() {
                 </div>
             </div>
 
-            {/* DRAWER docs — slide dari kanan */}
+            {/* DRAWER docs */}
             {drawerOpen && (
                 <>
-                    <div className="drawer-overlay open" onClick={closeDrawer} />
+                    <div className="drawer-overlay open" onClick={() => setDrawerOpen(false)} />
                     <div className="drawer open">
                         <div className="docs-head">
                             <span className="docs-head-icon">◈</span> dokumentasi
-                            <button className="docs-close" onClick={closeDrawer}>
+                            <button className="docs-close" onClick={() => setDrawerOpen(false)}>
                                 ✕
                             </button>
                         </div>
@@ -379,8 +428,7 @@ export default function App() {
     );
 }
 
-// ===================== DOCS CONTENT =====================
-
+// ===================== DOCS =====================
 function DocsContent() {
     return (
         <div className="docs-body">
@@ -388,9 +436,9 @@ function DocsContent() {
                 <div className="doc-section-title">instalasi</div>
                 <div className="install-steps">
                     {[
-                        ["01", "Clone / extract project", "cd dani-ai/"],
-                        ["02", "Install backend deps", "cd backend && npm install"],
-                        ["03", "Install frontend deps", "cd frontend && npm install"],
+                        ["01", "Clone project", "cd dani-ai/"],
+                        ["02", "Install backend", "cd backend && npm install"],
+                        ["03", "Install frontend", "cd frontend && npm install"],
                         ["04", "Isi .env", "GROQ_API_KEY=gsk_..."],
                         ["05", "Jalanin backend", "npm run start:dev"],
                         ["06", "Jalanin frontend", "npm run dev"],
@@ -405,22 +453,10 @@ function DocsContent() {
                         </div>
                     ))}
                 </div>
-                <div className="doc-note">
-                    <strong>Stack:</strong> NestJS (port 3001) + React/Vite (port 5173). Vite auto-proxy{" "}
-                    <code>/api</code> ke backend — gak perlu CORS manual.
-                </div>
             </div>
-
             <hr className="doc-divider" />
-
             <div className="doc-section" id="endpoints">
                 <div className="doc-section-title">API endpoints</div>
-                <div className="doc-code">
-                    <div className="doc-code-head">
-                        <span>base url</span>
-                    </div>
-                    <div className="doc-code-body">http://localhost:3001</div>
-                </div>
                 <table className="ep-table">
                     <thead>
                         <tr>
@@ -435,7 +471,7 @@ function DocsContent() {
                                 <span className="ep-method get">GET</span>
                             </td>
                             <td className="ep-path">/api/health</td>
-                            <td className="ep-desc">Cek status & API key</td>
+                            <td className="ep-desc">Status & API key</td>
                         </tr>
                         <tr>
                             <td>
@@ -448,15 +484,13 @@ function DocsContent() {
                             <td>
                                 <span className="ep-method get">GET</span>
                             </td>
-                            <td className="ep-path">/api/profiles</td>
-                            <td className="ep-desc">List profile tersedia</td>
+                            <td className="ep-path">/api/history</td>
+                            <td className="ep-desc">Ambil chat history</td>
                         </tr>
                     </tbody>
                 </table>
             </div>
-
             <hr className="doc-divider" />
-
             <div className="doc-section" id="profiles">
                 <div className="doc-section-title">profiles</div>
                 <div className="profile-chips">
@@ -469,46 +503,6 @@ function DocsContent() {
                             </div>
                         </div>
                     ))}
-                </div>
-                <div className="doc-note">
-                    <strong>Catatan:</strong> Ganti profile akan <strong>reset history</strong>. History dibatasi 20
-                    pesan terakhir.
-                </div>
-            </div>
-
-            <hr className="doc-divider" />
-
-            <div className="doc-section">
-                <div className="doc-section-title">struktur project</div>
-                <div className="doc-code">
-                    <div className="doc-code-head">
-                        <span>project tree</span>
-                    </div>
-                    <div className="doc-code-body">{`dani-ai/
-├── backend/          ← NestJS
-│   ├── src/
-│   │   ├── main.ts
-│   │   ├── app.module.ts
-│   │   ├── config/
-│   │   │   └── dani.config.ts   ← port dari dani_core.py
-│   │   ├── chat/
-│   │   │   ├── chat.controller.ts
-│   │   │   ├── chat.service.ts
-│   │   │   └── chat.module.ts
-│   │   └── health/
-│   │       └── health.controller.ts
-│   ├── .env
-│   └── package.json
-└── frontend/         ← React + Vite
-    ├── src/
-    │   ├── App.tsx
-    │   ├── App.css
-    │   ├── hooks/
-    │   ├── components/
-    │   ├── lib/
-    │   └── types/
-    ├── vite.config.ts
-    └── package.json`}</div>
                 </div>
             </div>
         </div>
