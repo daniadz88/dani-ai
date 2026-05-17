@@ -1,4 +1,4 @@
-// src/lib/api.ts
+/// <reference types="vite/client" />
 
 import type {ChatMessage, ChatResponse} from "../types";
 
