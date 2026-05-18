@@ -1,4 +1,4 @@
-// src/hooks/useChat.ts
+// src/hooks/useChat.ts (sama seperti sebelumnya, tidak perlu sendWithScreenshot)
 
 import {useState, useCallback, useRef} from "react";
 import type {ChatMessage, DisplayMessage, ProfileKey} from "../types";
@@ -20,40 +20,32 @@ export function useChat(initialProfile: ProfileKey = "pentest") {
     const history = useRef<ChatMessage[]>([]);
     const sessionId = useRef<string | null>(null);
 
-    const addDisplay = useCallback((type: DisplayMessage["type"], text: string) => {
+    const addDisplay = useCallback((type: DisplayMessage["type"], text: string, imageUrl?: string) => {
         const msg: DisplayMessage = {
             id: `msg-${msgIdx++}`,
             type,
             text,
             time: nowStr(),
+            imageUrl,
         };
         setMessages((prev) => [...prev, msg]);
         return msg.id;
     }, []);
 
-    // ── Simpan / update session ke Supabase ──────────────────────────────────
     const saveSession = useCallback(
         async (allHistory: ChatMessage[], currentProfile: ProfileKey, firstUserMsg: string) => {
             try {
-                const {
-                    data: {user},
-                } = await supabase.auth.getUser();
-                if (!user) return; // tidak login, skip
-
-                if (!sessionId.current) {
-                    sessionId.current = genId();
-                }
-
-                // user.id sudah UUID — langsung pakai
-                const {error} = await supabase.from("chat_sessions").upsert({
+                const { data: { user } } = await supabase.auth.getUser();
+                if (!user) return;
+                if (!sessionId.current) sessionId.current = genId();
+                const { error } = await supabase.from("chat_sessions").upsert({
                     id: sessionId.current,
-                    user_id: user.id, // UUID, bukan TEXT
+                    user_id: user.id,
                     title: firstUserMsg.slice(0, 80),
                     profile: currentProfile,
                     messages: allHistory,
                     updated_at: new Date().toISOString(),
                 });
-
                 if (error) console.warn("Supabase upsert error:", error.message);
             } catch (e) {
                 console.warn("Save session failed:", e);
@@ -62,22 +54,13 @@ export function useChat(initialProfile: ProfileKey = "pentest") {
         []
     );
 
-    // ── Load session dari history ─────────────────────────────────────────────
     const loadSession = useCallback(async (id: string) => {
         try {
-            const {data, error} = await supabase.from("chat_sessions").select("*").eq("id", id).single();
-
-            if (error || !data) {
-                console.warn("Load session error:", error?.message);
-                return;
-            }
-
-            // Restore state
+            const { data, error } = await supabase.from("chat_sessions").select("*").eq("id", id).single();
+            if (error || !data) return;
             sessionId.current = data.id;
             history.current = data.messages ?? [];
             setProfileState(data.profile as ProfileKey);
-
-            // Restore display messages dari history
             const restored: DisplayMessage[] = [];
             for (const msg of history.current) {
                 if (msg.role === "user" || msg.role === "assistant") {
@@ -86,6 +69,7 @@ export function useChat(initialProfile: ProfileKey = "pentest") {
                         type: msg.role === "user" ? "user" : "ai",
                         text: msg.content,
                         time: "",
+                        imageUrl: msg.imageUrl,
                     });
                 }
             }
@@ -95,46 +79,38 @@ export function useChat(initialProfile: ProfileKey = "pentest") {
         }
     }, []);
 
-    // ── Switch profile ────────────────────────────────────────────────────────
-    const switchProfile = useCallback(
-        (p: ProfileKey) => {
-            setProfileState(p);
-            history.current = [];
-            sessionId.current = null;
-            addDisplay("system", `Profile diubah ke **${p}**. History direset.`);
-        },
-        [addDisplay]
-    );
+    const switchProfile = useCallback((p: ProfileKey) => {
+        setProfileState(p);
+        history.current = [];
+        sessionId.current = null;
+        addDisplay("system", `Profile diubah ke **${p}**. History direset.`);
+    }, [addDisplay]);
 
-    // ── Clear messages (New Chat) ─────────────────────────────────────────────
     const clearMessages = useCallback(() => {
         setMessages([]);
         history.current = [];
         sessionId.current = null;
     }, []);
 
-    // ── Send ──────────────────────────────────────────────────────────────────
     const send = useCallback(
-        async (input: string) => {
+        async (input: string, imageBase64?: string) => {
             const text = input.trim();
-            if (!text || isLoading) return;
+            if (!text && !imageBase64) return;
 
             const isFirstMessage = history.current.length === 0;
-            const firstMsg = isFirstMessage ? text : history.current[0]?.content ?? text;
+            const firstMsg = isFirstMessage ? (text || "[Image]") : history.current[0]?.content ?? (text || "[Image]");
 
-            addDisplay("user", text);
+            addDisplay("user", text || (imageBase64 ? "[Gambar]" : ""), imageBase64);
             setIsLoading(true);
 
             try {
-                const data = await sendChat(text, profile, history.current);
+                const data = await sendChat(text, profile, history.current, imageBase64);
 
-                history.current.push({role: "user", content: text});
+                history.current.push({role: "user", content: text || "[Image]", imageUrl: imageBase64});
                 history.current.push({role: "assistant", content: data.reply});
                 if (history.current.length > 40) history.current = history.current.slice(-40);
 
                 addDisplay("ai", data.reply);
-
-                // Fire-and-forget — tidak block UI
                 saveSession(history.current, profile, firstMsg);
             } catch (e: any) {
                 addDisplay("system", `❌ ${e.message}`);
@@ -142,7 +118,7 @@ export function useChat(initialProfile: ProfileKey = "pentest") {
                 setIsLoading(false);
             }
         },
-        [isLoading, profile, addDisplay, saveSession]
+        [profile, addDisplay, saveSession]
     );
 
     return {messages, isLoading, profile, switchProfile, send, clearMessages, loadSession};

@@ -1,4 +1,5 @@
-// src/App.tsx — Dani AI (Claude-style UI) + sidebar toggle
+// src/App.tsx — Dani AI dengan Paste Screenshot + Prompt
+
 import {useState, useEffect, useRef, useCallback} from "react";
 import {useChat} from "./hooks/useChat";
 import {useTimer} from "./hooks/useTimer";
@@ -7,6 +8,7 @@ import {PROFILES, SHORTCUTS} from "./lib/profiles";
 import {checkHealth} from "./lib/api";
 import {supabase} from "./lib/supabase";
 import type {ProfileKey} from "./types";
+import Tesseract from "tesseract.js";
 import "./App.css";
 
 const THEMES = [
@@ -227,7 +229,7 @@ function ProfilePage({user, onBack}: {user: UserProfile; onBack: () => void}) {
     );
 }
 
-// ===================== SIDEBAR TOGGLE BUTTON (desktop) =====================
+// ===================== SIDEBAR TOGGLE BUTTON =====================
 function SidebarToggleBtn({collapsed, onClick}: {collapsed: boolean; onClick: () => void}) {
     return (
         <button
@@ -236,17 +238,14 @@ function SidebarToggleBtn({collapsed, onClick}: {collapsed: boolean; onClick: ()
             title={collapsed ? "Buka sidebar" : "Tutup sidebar"}
             aria-label={collapsed ? "Buka sidebar" : "Tutup sidebar"}
         >
-            {/* Panel-left icon — same style as Claude/Vercel */}
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 {collapsed ? (
-                    // panel-left-open
                     <>
                         <rect x="3" y="3" width="18" height="18" rx="2" />
                         <path d="M9 3v18" />
                         <path d="m14 9 3 3-3 3" />
                     </>
                 ) : (
-                    // panel-left-close
                     <>
                         <rect x="3" y="3" width="18" height="18" rx="2" />
                         <path d="M9 3v18" />
@@ -338,7 +337,6 @@ function Sidebar({
         <>
             <div className={`sidebar-overlay${isOpen ? " open" : ""}`} onClick={onClose} />
             <aside className={`sidebar${isOpen ? " mobile-open" : ""}${collapsed ? " collapsed" : ""}`}>
-                {/* Logo + New Chat */}
                 <div className="sidebar-top">
                     <span className="sidebar-logo">
                         <em>Dani</em>AI
@@ -351,7 +349,6 @@ function Sidebar({
                     </button>
                 </div>
 
-                {/* Mode dropdown */}
                 <div className="sidebar-section-label sidebar-label">Mode</div>
                 <div style={{padding: "0 8px 4px"}} ref={modeRef}>
                     <button className="mode-dropdown-btn" onClick={() => setModeOpen((o) => !o)} title={currentProfile?.label ?? profile}>
@@ -401,7 +398,6 @@ function Sidebar({
                     )}
                 </div>
 
-                {/* History */}
                 <div className="sidebar-section-label sidebar-label" style={{marginTop: 8}}>
                     Riwayat {historyLoading && <span style={{opacity: 0.3, fontSize: 10}}>●●●</span>}
                 </div>
@@ -448,7 +444,6 @@ function Sidebar({
                     )}
                 </div>
 
-                {/* Bottom */}
                 <div className="sidebar-bottom">
                     <div className="sidebar-status-row sidebar-label">
                         <span className={`sidebar-status-dot${connStatus === "online" ? " online" : connStatus === "error" ? " error" : ""}`} />
@@ -512,14 +507,17 @@ export default function App() {
     const [input, setInput] = useState("");
     const [connStatus, setConnStatus] = useState<"checking" | "online" | "error">("checking");
     const [msgCount, setMsgCount] = useState(0);
-    const [sidebarOpen, setSidebarOpen] = useState(false);       // mobile overlay
-    const [sidebarCollapsed, setSidebarCollapsed] = useState(() => { // desktop toggle
+    const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
         try { return localStorage.getItem("dani-sidebar-collapsed") === "true"; } catch { return false; }
     });
     const [userToken, setUserToken] = useState<string | null>(null);
     const [user, setUser] = useState<UserProfile | null>(null);
     const [page, setPage] = useState<"chat" | "profile">("chat");
     const [loadingSessionId, setLoadingSessionId] = useState<string | null>(null);
+    const [pendingImage, setPendingImage] = useState<string | null>(null);
+    const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null); 
+    const [isProcessingImage, setIsProcessingImage] = useState(false);
 
     const chatBodyRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -580,16 +578,59 @@ export default function App() {
         return () => document.removeEventListener("click", h);
     }, [pickerOpen, setPickerOpen]);
 
+    // Handle paste gambar di textarea
+    const handlePaste = useCallback(async (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+        const items = e.clipboardData?.items;
+        if (!items) return;
+
+        for (const item of items) {
+            if (item.type.indexOf('image') !== -1) {
+                e.preventDefault();
+                const blob = item.getAsFile();
+                if (!blob) continue;
+
+                const reader = new FileReader();
+                reader.onloadend = async () => {
+                    const base64 = reader.result as string;
+                    setPendingImage(base64);
+                    setImagePreviewUrl(base64);
+                    
+                    // Optional: OCR baca teks
+                    // try {
+                    //     const {data: {text}} = await Tesseract.recognize(blob, 'eng+ind');
+                    //     if (text.trim()) {
+                    //         // Tambahkan teks hasil OCR ke input
+                    //         setInput(prev => prev + (prev ? '\n' : '') + text.trim());
+                    //     }
+                    // } catch (err) {
+                    //     console.error("OCR error:", err);
+                    // }
+                };
+                reader.readAsDataURL(blob);
+                break;
+            }
+        }
+    }, []);
+
     const handleSend = useCallback(async () => {
-        if (!input.trim() || isLoading) return;
+        if ((!input.trim() && !pendingImage) || isLoading) return;
+        
         const text = input;
+        const image = pendingImage;
+        
         setInput("");
+        setPendingImage(null);
+        setImagePreviewUrl(null);
         if (inputRef.current) inputRef.current.style.height = "auto";
-        await send(text);
-    }, [input, isLoading, send]);
+        
+        await send(text || "Apa yang ada di gambar ini?", image || undefined);
+    }, [input, pendingImage, isLoading, send]);
 
     const handleKey = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-        if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); }
+        if (e.key === "Enter" && !e.shiftKey) { 
+            e.preventDefault(); 
+            handleSend(); 
+        }
     };
 
     const handleHistoryLoad = useCallback(async (id: string) => {
@@ -645,10 +686,9 @@ export default function App() {
     return (
         <div className={`app-layout${sidebarCollapsed ? " sidebar-is-collapsed" : ""}`}>
             <Sidebar {...sidebarProps} />
+            
             <main className="main-area">
-                {/* Topbar */}
                 <header className="topbar">
-                    {/* Mobile: hamburger */}
                     <button className="topbar-ham mobile-only" onClick={() => setSidebarOpen(true)}>
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                             <line x1="3" y1="6" x2="21" y2="6" />
@@ -657,7 +697,6 @@ export default function App() {
                         </svg>
                     </button>
 
-                    {/* Desktop: sidebar toggle */}
                     <SidebarToggleBtn collapsed={sidebarCollapsed} onClick={toggleSidebar} />
 
                     <span className="topbar-logo">
@@ -709,35 +748,53 @@ export default function App() {
                 <div className="input-area">
                     <div className="input-inner">
                         <div className="input-box">
-                            <textarea
-                                ref={inputRef}
-                                className="chat-input"
-                                value={input}
-                                rows={1}
-                                onChange={(e) => {
-                                    setInput(e.target.value);
-                                    e.target.style.height = "auto";
-                                    e.target.style.height = Math.min(e.target.scrollHeight, 200) + "px";
-                                }}
-                                onKeyDown={handleKey}
-                                placeholder="Kirim pesan ke Dani AI..."
-                                disabled={isLoading}
-                                autoComplete="off"
-                            />
+                            <div className="chat-input-wrapper">
+                                {imagePreviewUrl && (
+                                    <div className="inline-image-preview">
+                                        <img src={imagePreviewUrl} alt="Preview" />
+                                        <button onClick={() => {
+                                            setImagePreviewUrl(null);
+                                            setPendingImage(null);
+                                        }}>✕</button>
+                                    </div>
+                                )}
+                                <textarea
+                                    ref={inputRef}
+                                    className="chat-input"
+                                    value={input}
+                                    rows={1}
+                                    onChange={(e) => {
+                                        setInput(e.target.value);
+                                        e.target.style.height = "auto";
+                                        e.target.style.height = Math.min(e.target.scrollHeight, 200) + "px";
+                                    }}
+                                    onKeyDown={handleKey}
+                                    onPaste={handlePaste}
+                                    placeholder="Kirim pesan ke Dani AI... (Paste screenshot di sini)"
+                                    disabled={isLoading}
+                                    autoComplete="off"
+                                />
+                            </div>
                             <button
-                                className={`send-btn${input.trim() ? " ready" : ""}`}
+                                className={`send-btn${(input.trim() || pendingImage) ? " ready" : ""}`}
                                 onClick={handleSend}
-                                disabled={isLoading || !input.trim()}
+                                disabled={isLoading || (!input.trim() && !pendingImage)}
                             >
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                                     <path d="M12 19V5M5 12l7-7 7 7" />
                                 </svg>
                             </button>
                         </div>
-                        <p className="input-hint">Enter kirim · Shift+Enter baris baru</p>
+                        <p className="input-hint">Enter kirim · Shift+Enter baris baru · Paste screenshot langsung di sini</p>
                     </div>
                 </div>
             </main>
+
+            {isProcessingImage && (
+                <div className="screenshot-toast">
+                    📷 Membaca gambar...
+                </div>
+            )}
         </div>
     );
 }

@@ -1,4 +1,4 @@
-// frontend/src/lib/api.ts
+// src/lib/api.ts
 
 const BASE = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : "/api";
 
@@ -26,13 +26,21 @@ export async function checkHealth(): Promise<HealthResponse> {
 export async function sendChat(
     message: string,
     profile: string,
-    history: {role: string; content: string}[]
+    history: {role: string; content: string; imageUrl?: string}[],
+    imageBase64?: string
 ): Promise<ChatResponse> {
+    const payload: any = {message, profile, history};
+    if (imageBase64) {
+        payload.image = imageBase64;
+        payload.hasImage = true;
+    }
+    
     const res = await fetch(`${BASE}/chat`, {
         method: "POST",
         headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({message, profile, history}),
+        body: JSON.stringify(payload),
     });
+    
     if (!res.ok) {
         const err = await res.json().catch(() => ({error: `HTTP ${res.status}`}));
         throw new Error(err.error || `Request failed: ${res.status}`);

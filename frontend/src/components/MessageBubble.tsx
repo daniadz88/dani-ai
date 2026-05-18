@@ -6,7 +6,7 @@ import type {DisplayMessage} from "../types";
 interface Props {
     msg: DisplayMessage;
     onRetry?: (text: string) => void;
-    onAvatarClick?: () => void; // klik avatar user → buka profile
+    onAvatarClick?: () => void;
 }
 
 // ── Syntax highlighter ─────────────────────────────────────────────────────
@@ -72,7 +72,7 @@ function parseMarkdown(raw: string): string {
     return out;
 }
 
-// ── Component ──────────────────────────────────────────────────────────────
+// ── MessageBubble Component ──
 export function MessageBubble({msg, onRetry, onAvatarClick}: Props) {
     const [copied, setCopied] = useState(false);
     const [retryed, setRetryed] = useState(false);
@@ -95,6 +95,8 @@ export function MessageBubble({msg, onRetry, onAvatarClick}: Props) {
     const isSys = msg.type === "system";
     const rendered = useMemo(() => parseMarkdown(msg.text), [msg.text]);
 
+    const hasImage = msg.imageUrl;
+
     if (isSys) {
         return (
             <div className="mb-sys">
@@ -107,7 +109,6 @@ export function MessageBubble({msg, onRetry, onAvatarClick}: Props) {
     return (
         <div className={`msg-row${isUser ? " msg-row-user" : " msg-row-ai"}`}>
             <div className="msg-role">
-                {/* Avatar — klik untuk profile kalau user */}
                 <button
                     className={`msg-avatar-btn${isUser ? " user" : " ai"}${isUser && onAvatarClick ? " clickable" : ""}`}
                     onClick={isUser && onAvatarClick ? onAvatarClick : undefined}
@@ -132,6 +133,17 @@ export function MessageBubble({msg, onRetry, onAvatarClick}: Props) {
                     </button>
                 )}
             </div>
+
+            {hasImage && (
+                <div className="msg-image-wrap">
+                    <img 
+                        src={msg.imageUrl} 
+                        alt="Uploaded"
+                        className="msg-image"
+                        onClick={() => window.open(msg.imageUrl, '_blank')}
+                    />
+                </div>
+            )}
 
             <div className="msg-content" dangerouslySetInnerHTML={{__html: rendered}} />
 
