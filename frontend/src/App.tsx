@@ -1,4 +1,4 @@
-// src/App.tsx — Dani AI (Claude-style UI)
+// src/App.tsx — Dani AI (Claude-style UI) + sidebar toggle
 import {useState, useEffect, useRef, useCallback} from "react";
 import {useChat} from "./hooks/useChat";
 import {useTimer} from "./hooks/useTimer";
@@ -216,14 +216,7 @@ function ProfilePage({user, onBack}: {user: UserProfile; onBack: () => void}) {
 
                 <div className="profile-danger">
                     <button className="profile-logout-btn" onClick={handleLogout}>
-                        <svg
-                            width="15"
-                            height="15"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                        >
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                             <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" />
                         </svg>
                         Logout
@@ -234,10 +227,42 @@ function ProfilePage({user, onBack}: {user: UserProfile; onBack: () => void}) {
     );
 }
 
+// ===================== SIDEBAR TOGGLE BUTTON (desktop) =====================
+function SidebarToggleBtn({collapsed, onClick}: {collapsed: boolean; onClick: () => void}) {
+    return (
+        <button
+            className="sidebar-toggle-btn"
+            onClick={onClick}
+            title={collapsed ? "Buka sidebar" : "Tutup sidebar"}
+            aria-label={collapsed ? "Buka sidebar" : "Tutup sidebar"}
+        >
+            {/* Panel-left icon — same style as Claude/Vercel */}
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                {collapsed ? (
+                    // panel-left-open
+                    <>
+                        <rect x="3" y="3" width="18" height="18" rx="2" />
+                        <path d="M9 3v18" />
+                        <path d="m14 9 3 3-3 3" />
+                    </>
+                ) : (
+                    // panel-left-close
+                    <>
+                        <rect x="3" y="3" width="18" height="18" rx="2" />
+                        <path d="M9 3v18" />
+                        <path d="m16 15-3-3 3-3" />
+                    </>
+                )}
+            </svg>
+        </button>
+    );
+}
+
 // ===================== SIDEBAR =====================
 interface SidebarProps {
     isOpen: boolean;
     onClose: () => void;
+    collapsed: boolean;
     theme: string;
     themes: typeof THEMES;
     setTheme: (t: string) => void;
@@ -263,6 +288,7 @@ interface SidebarProps {
 function Sidebar({
     isOpen,
     onClose,
+    collapsed,
     theme,
     themes,
     setTheme,
@@ -311,55 +337,42 @@ function Sidebar({
     return (
         <>
             <div className={`sidebar-overlay${isOpen ? " open" : ""}`} onClick={onClose} />
-            <aside className={`sidebar${isOpen ? " mobile-open" : ""}`}>
+            <aside className={`sidebar${isOpen ? " mobile-open" : ""}${collapsed ? " collapsed" : ""}`}>
                 {/* Logo + New Chat */}
                 <div className="sidebar-top">
                     <span className="sidebar-logo">
                         <em>Dani</em>AI
                     </span>
-                    <button className="new-chat-btn" onClick={onNewChat}>
-                        <svg
-                            width="14"
-                            height="14"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2.5"
-                        >
+                    <button className="new-chat-btn" onClick={onNewChat} title="New chat">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                             <path d="M12 5v14M5 12h14" />
                         </svg>
-                        New chat
+                        <span className="sidebar-label">New chat</span>
                     </button>
                 </div>
 
                 {/* Mode dropdown */}
-                <div className="sidebar-section-label">Mode</div>
+                <div className="sidebar-section-label sidebar-label">Mode</div>
                 <div style={{padding: "0 8px 4px"}} ref={modeRef}>
-                    <button className="mode-dropdown-btn" onClick={() => setModeOpen((o) => !o)}>
+                    <button className="mode-dropdown-btn" onClick={() => setModeOpen((o) => !o)} title={currentProfile?.label ?? profile}>
                         <span style={{opacity: 0.6, fontSize: 13, flexShrink: 0}}>◈</span>
-                        <span className="mode-dropdown-info">
+                        <span className="mode-dropdown-info sidebar-label">
                             <span className="mode-dropdown-label">{currentProfile?.label ?? profile}</span>
                             <span className="mode-dropdown-desc">{currentProfile?.desc ?? ""}</span>
                         </span>
                         <svg
-                            width="12"
-                            height="12"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2.5"
+                            width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+                            className="sidebar-label"
                             style={{
-                                flexShrink: 0,
-                                opacity: 0.4,
+                                flexShrink: 0, opacity: 0.4,
                                 transform: modeOpen ? "rotate(180deg)" : "none",
-                                transition: "transform 0.2s",
-                                marginLeft: "auto",
+                                transition: "transform 0.2s", marginLeft: "auto",
                             }}
                         >
                             <path d="M6 9l6 6 6-6" />
                         </svg>
                     </button>
-                    {modeOpen && (
+                    {modeOpen && !collapsed && (
                         <div className="mode-dropdown-list">
                             {profiles.map((p) => (
                                 <button
@@ -377,19 +390,8 @@ function Sidebar({
                                         <span className="mode-dropdown-item-desc">{p.desc}</span>
                                     </span>
                                     {profile === p.key && (
-                                        <svg
-                                            width="13"
-                                            height="13"
-                                            viewBox="0 0 24 24"
-                                            fill="none"
-                                            stroke="currentColor"
-                                            strokeWidth="2.5"
-                                            style={{
-                                                marginLeft: "auto",
-                                                color: "var(--accent)",
-                                                flexShrink: 0,
-                                            }}
-                                        >
+                                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+                                            style={{marginLeft: "auto", color: "var(--accent)", flexShrink: 0}}>
                                             <path d="M20 6L9 17l-5-5" />
                                         </svg>
                                     )}
@@ -400,10 +402,10 @@ function Sidebar({
                 </div>
 
                 {/* History */}
-                <div className="sidebar-section-label" style={{marginTop: 8}}>
+                <div className="sidebar-section-label sidebar-label" style={{marginTop: 8}}>
                     Riwayat {historyLoading && <span style={{opacity: 0.3, fontSize: 10}}>●●●</span>}
                 </div>
-                <div className="sidebar-history">
+                <div className="sidebar-history sidebar-label">
                     {!userToken ? (
                         <p className="history-empty-msg">Login untuk lihat riwayat</p>
                     ) : history.length === 0 && !historyLoading ? (
@@ -416,49 +418,29 @@ function Sidebar({
                                     <button
                                         key={item.id}
                                         className={`history-item${loadingSessionId === item.id ? " loading" : ""}`}
-                                        onClick={() => {
-                                            onHistoryLoad(item.id);
-                                            onClose();
-                                        }}
+                                        onClick={() => { onHistoryLoad(item.id); onClose(); }}
                                         disabled={loadingSessionId === item.id}
+                                        title={item.title || "Untitled"}
                                     >
                                         {loadingSessionId === item.id ? (
-                                            <span
-                                                style={{
-                                                    width: 12,
-                                                    height: 12,
-                                                    border: "1.5px solid var(--accent)",
-                                                    borderTopColor: "transparent",
-                                                    borderRadius: "50%",
-                                                    display: "inline-block",
-                                                    animation: "spin 0.6s linear infinite",
-                                                    flexShrink: 0,
-                                                }}
-                                            />
+                                            <span style={{
+                                                width: 12, height: 12,
+                                                border: "1.5px solid var(--accent)", borderTopColor: "transparent",
+                                                borderRadius: "50%", display: "inline-block",
+                                                animation: "spin 0.6s linear infinite", flexShrink: 0,
+                                            }} />
                                         ) : (
-                                            <svg
-                                                width="12"
-                                                height="12"
-                                                viewBox="0 0 24 24"
-                                                fill="none"
-                                                stroke="currentColor"
-                                                strokeWidth="2"
-                                                style={{flexShrink: 0, opacity: 0.35}}
-                                            >
+                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                                                style={{flexShrink: 0, opacity: 0.35}}>
                                                 <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
                                             </svg>
                                         )}
                                         <span className="history-item-title">{item.title || "Untitled"}</span>
                                         <button
                                             className="history-item-del"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                onHistoryDelete(item.id);
-                                            }}
+                                            onClick={(e) => { e.stopPropagation(); onHistoryDelete(item.id); }}
                                             title="Hapus"
-                                        >
-                                            ✕
-                                        </button>
+                                        >✕</button>
                                     </button>
                                 ))}
                             </div>
@@ -468,85 +450,50 @@ function Sidebar({
 
                 {/* Bottom */}
                 <div className="sidebar-bottom">
-                    {/* Status row */}
-                    <div className="sidebar-status-row">
-                        <span
-                            className={`sidebar-status-dot${
-                                connStatus === "online" ? " online" : connStatus === "error" ? " error" : ""
-                            }`}
-                        />
-                        {connStatus === "online" ? "online" : connStatus === "error" ? "offline" : "checking"}
-                        <span className="sidebar-status-sep">·</span>
-                        {msgCount} pesan
-                        <span className="sidebar-status-sep">·</span>
-                        {timer}
+                    <div className="sidebar-status-row sidebar-label">
+                        <span className={`sidebar-status-dot${connStatus === "online" ? " online" : connStatus === "error" ? " error" : ""}`} />
+                        <span className="sidebar-label">{connStatus === "online" ? "online" : connStatus === "error" ? "offline" : "checking"}</span>
+                        <span className="sidebar-status-sep sidebar-label">·</span>
+                        <span className="sidebar-label">{msgCount} pesan</span>
+                        <span className="sidebar-status-sep sidebar-label">·</span>
+                        <span className="sidebar-label">{timer}</span>
                     </div>
 
-                    {/* User row */}
                     {userToken && user ? (
-                        <button className="sidebar-user-btn" onClick={onOpenProfile}>
+                        <button className="sidebar-user-btn" onClick={onOpenProfile} title={user.full_name || user.email}>
                             <div className="sidebar-avatar">
                                 {user.avatar_url ? (
-                                    <img
-                                        src={user.avatar_url}
-                                        alt="av"
-                                        style={{
-                                            width: "100%",
-                                            height: "100%",
-                                            objectFit: "cover",
-                                            borderRadius: "50%",
-                                        }}
-                                    />
-                                ) : (
-                                    initials
-                                )}
+                                    <img src={user.avatar_url} alt="av" style={{width:"100%",height:"100%",objectFit:"cover",borderRadius:"50%"}} />
+                                ) : initials}
                             </div>
-                            <div className="sidebar-user-info">
+                            <div className="sidebar-user-info sidebar-label">
                                 <span className="sidebar-user-name">{user.full_name || user.email?.split("@")[0]}</span>
                                 <span className="sidebar-user-sub">{user.email}</span>
                             </div>
-                            <svg
-                                width="13"
-                                height="13"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                style={{flexShrink: 0, opacity: 0.35, marginLeft: "auto"}}
-                            >
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                                className="sidebar-label"
+                                style={{flexShrink: 0, opacity: 0.35, marginLeft: "auto"}}>
                                 <path d="M9 18l6-6-6-6" />
                             </svg>
                         </button>
                     ) : (
-                        <button
-                            className="sidebar-user-btn"
-                            onClick={() => supabase.auth.signInWithOAuth({provider: "google"})}
-                        >
-                            <div className="sidebar-avatar" style={{background: "var(--input-bg)"}}>
-                                ?
-                            </div>
-                            <span style={{fontSize: 12, color: "var(--text3)"}}>Login untuk simpan riwayat</span>
+                        <button className="sidebar-user-btn" onClick={() => supabase.auth.signInWithOAuth({provider: "google"})}>
+                            <div className="sidebar-avatar" style={{background: "var(--input-bg)"}}>?</div>
+                            <span className="sidebar-label" style={{fontSize: 12, color: "var(--text3)"}}>Login untuk simpan riwayat</span>
                         </button>
                     )}
 
-                    {/* Theme picker */}
-                    <div className="sidebar-theme-wrap" onClick={(e) => e.stopPropagation()}>
-                        <button className="sidebar-theme-btn" onClick={() => setPickerOpen(!pickerOpen)}>
+                    <div className="sidebar-theme-wrap sidebar-label" onClick={(e) => e.stopPropagation()}>
+                        <button className="sidebar-theme-btn" onClick={() => setPickerOpen(!pickerOpen)} title={`Tema: ${currentTheme.label}`}>
                             <span className="sidebar-theme-dot" style={{background: currentTheme.color}} />
-                            Tema: {currentTheme.label}
-                            <span style={{marginLeft: "auto", opacity: 0.35, fontSize: 10}}>▲</span>
+                            <span className="sidebar-label">Tema: {currentTheme.label}</span>
+                            <span className="sidebar-label" style={{marginLeft: "auto", opacity: 0.35, fontSize: 10}}>▲</span>
                         </button>
-                        {pickerOpen && (
+                        {pickerOpen && !collapsed && (
                             <div className="theme-dropdown">
                                 {themes.map((t) => (
-                                    <button
-                                        key={t.id}
-                                        className={`theme-opt${theme === t.id ? " active" : ""}`}
-                                        onClick={() => {
-                                            setTheme(t.id);
-                                            setPickerOpen(false);
-                                        }}
-                                    >
+                                    <button key={t.id} className={`theme-opt${theme === t.id ? " active" : ""}`}
+                                        onClick={() => { setTheme(t.id); setPickerOpen(false); }}>
                                         <span className="theme-dot" style={{background: t.color}} />
                                         {t.label}
                                     </button>
@@ -565,7 +512,10 @@ export default function App() {
     const [input, setInput] = useState("");
     const [connStatus, setConnStatus] = useState<"checking" | "online" | "error">("checking");
     const [msgCount, setMsgCount] = useState(0);
-    const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [sidebarOpen, setSidebarOpen] = useState(false);       // mobile overlay
+    const [sidebarCollapsed, setSidebarCollapsed] = useState(() => { // desktop toggle
+        try { return localStorage.getItem("dani-sidebar-collapsed") === "true"; } catch { return false; }
+    });
     const [userToken, setUserToken] = useState<string | null>(null);
     const [user, setUser] = useState<UserProfile | null>(null);
     const [page, setPage] = useState<"chat" | "profile">("chat");
@@ -578,59 +528,51 @@ export default function App() {
     const {messages, isLoading, profile, switchProfile, send, clearMessages, loadSession} = useChat("pentest");
     const {history, loading: historyLoading, loadHistory, deleteItem} = useHistory(userToken);
 
+    // Persist sidebar state
+    useEffect(() => {
+        try { localStorage.setItem("dani-sidebar-collapsed", String(sidebarCollapsed)); } catch {}
+    }, [sidebarCollapsed]);
+
     useEffect(() => {
         supabase.auth.getSession().then(({data}) => {
             const s = data.session;
             setUserToken(s?.access_token ?? null);
-            if (s?.user)
-                setUser({
-                    id: s.user.id,
-                    email: s.user.email ?? "",
-                    full_name: s.user.user_metadata?.full_name,
-                    avatar_url: s.user.user_metadata?.avatar_url,
-                    created_at: s.user.created_at,
-                });
+            if (s?.user) setUser({
+                id: s.user.id, email: s.user.email ?? "",
+                full_name: s.user.user_metadata?.full_name,
+                avatar_url: s.user.user_metadata?.avatar_url,
+                created_at: s.user.created_at,
+            });
         });
-        const {
-            data: {subscription},
-        } = supabase.auth.onAuthStateChange((_e, s) => {
+        const {data: {subscription}} = supabase.auth.onAuthStateChange((_e, s) => {
             setUserToken(s?.access_token ?? null);
-            if (s?.user)
-                setUser({
-                    id: s.user.id,
-                    email: s.user.email ?? "",
-                    full_name: s.user.user_metadata?.full_name,
-                    avatar_url: s.user.user_metadata?.avatar_url,
-                    created_at: s.user.created_at,
-                });
+            if (s?.user) setUser({
+                id: s.user.id, email: s.user.email ?? "",
+                full_name: s.user.user_metadata?.full_name,
+                avatar_url: s.user.user_metadata?.avatar_url,
+                created_at: s.user.created_at,
+            });
             else setUser(null);
         });
         return () => subscription.unsubscribe();
     }, []);
 
-    useEffect(() => {
-        if (userToken) loadHistory();
-    }, [userToken, loadHistory]);
-
+    useEffect(() => { if (userToken) loadHistory(); }, [userToken, loadHistory]);
     useEffect(() => {
         const el = chatBodyRef.current;
         if (el) el.scrollTop = el.scrollHeight;
     }, [messages, isLoading]);
-
     useEffect(() => {
         if (!isLoading && page === "chat") setTimeout(() => inputRef.current?.focus(), 50);
     }, [isLoading, page]);
-
     useEffect(() => {
         setMsgCount(messages.filter((m) => m.type === "user").length);
     }, [messages]);
-
     useEffect(() => {
         checkHealth()
         .then((d) => setConnStatus(d.api_key === "missing" ? "error" : "online"))
         .catch(() => setConnStatus("error"));
     }, []);
-
     useEffect(() => {
         if (!pickerOpen) return;
         const h = () => setPickerOpen(false);
@@ -647,45 +589,35 @@ export default function App() {
     }, [input, isLoading, send]);
 
     const handleKey = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-        if (e.key === "Enter" && !e.shiftKey) {
-            e.preventDefault();
-            handleSend();
-        }
+        if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); }
     };
 
-    // ─── FIX: Load session from Supabase ───────────────────────────────────────
-    const handleHistoryLoad = useCallback(
-        async (id: string) => {
-            setLoadingSessionId(id);
-            setSidebarOpen(false);
-            setPage("chat");
-            try {
-                // loadSession (dari useChat) sudah: fetch Supabase → restore profile → restore messages
-                await loadSession(id);
+    const handleHistoryLoad = useCallback(async (id: string) => {
+        setLoadingSessionId(id);
+        setSidebarOpen(false);
+        setPage("chat");
+        try {
+            await loadSession(id);
+            setTimeout(() => inputRef.current?.focus(), 100);
+        } catch (e) {
+            console.error("Load session error:", e);
+        } finally {
+            setLoadingSessionId(null);
+        }
+    }, [loadSession]);
 
-                setTimeout(() => inputRef.current?.focus(), 100);
-            } catch (e) {
-                console.error("Load session error:", e);
-            } finally {
-                setLoadingSessionId(null);
-            }
-        },
-        [loadSession]
-    );
+    const toggleSidebar = useCallback(() => {
+        setSidebarCollapsed((v) => !v);
+    }, []);
 
     const sidebarProps = {
         isOpen: sidebarOpen,
         onClose: () => setSidebarOpen(false),
-        theme,
-        themes: THEMES,
-        setTheme,
-        pickerOpen,
-        setPickerOpen,
-        profile,
-        profiles: PROFILES,
-        switchProfile,
-        history,
-        historyLoading,
+        collapsed: sidebarCollapsed,
+        theme, themes: THEMES, setTheme,
+        pickerOpen, setPickerOpen,
+        profile, profiles: PROFILES, switchProfile,
+        history, historyLoading,
         onHistoryLoad: handleHistoryLoad,
         onHistoryDelete: deleteItem,
         onNewChat: () => {
@@ -694,18 +626,14 @@ export default function App() {
             setPage("chat");
             setTimeout(() => inputRef.current?.focus(), 100);
         },
-        connStatus,
-        userToken,
-        user,
-        msgCount,
-        timer,
+        connStatus, userToken, user, msgCount, timer,
         onOpenProfile: () => setPage("profile"),
         loadingSessionId,
     };
 
     if (page === "profile" && user) {
         return (
-            <div className="app-layout">
+            <div className={`app-layout${sidebarCollapsed ? " sidebar-is-collapsed" : ""}`}>
                 <Sidebar {...sidebarProps} />
                 <main className="main-area">
                     <ProfilePage user={user} onBack={() => setPage("chat")} />
@@ -715,35 +643,29 @@ export default function App() {
     }
 
     return (
-        <div className="app-layout">
+        <div className={`app-layout${sidebarCollapsed ? " sidebar-is-collapsed" : ""}`}>
             <Sidebar {...sidebarProps} />
             <main className="main-area">
-                {/* Topbar mobile only */}
+                {/* Topbar */}
                 <header className="topbar">
-                    <button className="topbar-ham" onClick={() => setSidebarOpen(true)}>
-                        <svg
-                            width="18"
-                            height="18"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                        >
+                    {/* Mobile: hamburger */}
+                    <button className="topbar-ham mobile-only" onClick={() => setSidebarOpen(true)}>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                             <line x1="3" y1="6" x2="21" y2="6" />
                             <line x1="3" y1="12" x2="21" y2="12" />
                             <line x1="3" y1="18" x2="21" y2="18" />
                         </svg>
                     </button>
+
+                    {/* Desktop: sidebar toggle */}
+                    <SidebarToggleBtn collapsed={sidebarCollapsed} onClick={toggleSidebar} />
+
                     <span className="topbar-logo">
                         <em>Dani</em>AI
                     </span>
                     <div style={{flex: 1}} />
                     <div className="topbar-status">
-                        <span
-                            className={`status-dot${
-                                connStatus === "online" ? " online" : connStatus === "error" ? " error" : ""
-                            }`}
-                        />
+                        <span className={`status-dot${connStatus === "online" ? " online" : connStatus === "error" ? " error" : ""}`} />
                         {connStatus}
                     </div>
                 </header>
@@ -754,22 +676,13 @@ export default function App() {
                             <div className="welcome">
                                 <div className="welcome-logo">🛡️</div>
                                 <h1 className="welcome-title">
-                                    Halo
-                                    {user?.full_name ? `, ${user.full_name.split(" ")[0]}` : ""}!
+                                    Halo{user?.full_name ? `, ${user.full_name.split(" ")[0]}` : ""}!
                                 </h1>
-                                <p className="welcome-sub">
-                                    Aku Dani AI — asisten keamanan siber. Mau mulai dari mana?
-                                </p>
+                                <p className="welcome-sub">Aku Dani AI — asisten keamanan siber. Mau mulai dari mana?</p>
                                 <div className="welcome-chips">
                                     {SHORTCUTS.map((s) => (
-                                        <button
-                                            key={s.label}
-                                            className="welcome-chip"
-                                            onClick={() => {
-                                                setInput(s.text);
-                                                setTimeout(() => inputRef.current?.focus(), 50);
-                                            }}
-                                        >
+                                        <button key={s.label} className="welcome-chip"
+                                            onClick={() => { setInput(s.text); setTimeout(() => inputRef.current?.focus(), 50); }}>
                                             {s.label}
                                         </button>
                                     ))}
@@ -786,9 +699,7 @@ export default function App() {
                                     <span className="msg-role-name">Dani AI</span>
                                 </div>
                                 <div className="typing-dots">
-                                    <div className="tdot" />
-                                    <div className="tdot" />
-                                    <div className="tdot" />
+                                    <div className="tdot" /><div className="tdot" /><div className="tdot" />
                                 </div>
                             </div>
                         )}
@@ -818,14 +729,7 @@ export default function App() {
                                 onClick={handleSend}
                                 disabled={isLoading || !input.trim()}
                             >
-                                <svg
-                                    width="16"
-                                    height="16"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    strokeWidth="2.5"
-                                >
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                                     <path d="M12 19V5M5 12l7-7 7 7" />
                                 </svg>
                             </button>
