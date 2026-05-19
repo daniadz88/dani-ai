@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "https://dani-ai-eph8.vercel.app/api/$1"
+    }
+  ]
+}

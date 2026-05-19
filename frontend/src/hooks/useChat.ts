@@ -98,25 +98,31 @@ export function useChat(initialProfile: ProfileKey = "pentest") {
             if (!text && !imageBase64) return;
 
             const isFirstMessage = history.current.length === 0;
-            const firstMsg = isFirstMessage ? (text || "[Image]") : history.current[0]?.content ?? (text || "[Image]");
+            const firstMsg = isFirstMessage
+                ? (text || "[Image]")
+                : history.current[0]?.content ?? (text || "[Image]");
 
             addDisplay("user", text || (imageBase64 ? "[Gambar]" : ""), imageBase64);
             setIsLoading(true);
 
-            try {
-                const data = await sendChat(text, profile, history.current, imageBase64);
+        try {
+            // ← ambil token sebelum send
+            const { data: { session } } = await supabase.auth.getSession();
+            const token = session?.access_token;
 
-                history.current.push({role: "user", content: text || "[Image]", imageUrl: imageBase64});
-                history.current.push({role: "assistant", content: data.reply});
-                if (history.current.length > 40) history.current = history.current.slice(-40);
+            const data = await sendChat(text, profile, history.current, imageBase64, token);
 
-                addDisplay("ai", data.reply);
-                saveSession(history.current, profile, firstMsg);
-            } catch (e: any) {
-                addDisplay("system", `❌ ${e.message}`);
-            } finally {
-                setIsLoading(false);
-            }
+            history.current.push({ role: "user", content: text || "[Image]", imageUrl: imageBase64 });
+            history.current.push({ role: "assistant", content: data.reply });
+            if (history.current.length > 40) history.current = history.current.slice(-40);
+
+            addDisplay("ai", data.reply);
+            saveSession(history.current, profile, firstMsg);
+        } catch (e: any) {
+            addDisplay("system", `❌ ${e.message}`);
+        } finally {
+            setIsLoading(false);
+        }
         },
         [profile, addDisplay, saveSession]
     );

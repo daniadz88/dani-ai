@@ -7,14 +7,33 @@ import OpenAI from "openai";
 
 const app = express();
 
-app.use(
-    cors({
-        origin: ["http://localhost:5173", "https://dani-ai-olive.vercel.app", /https:\/\/dani-ai.*\.vercel\.app$/],
-        methods: ["GET", "POST", "OPTIONS"],
-        allowedHeaders: ["Content-Type", "Authorization"],
-        credentials: true,
-    })
-);
+// CORS configuration - allow semua yang diperlukan
+const allowedOrigins = [
+    'http://localhost:5173',
+    'http://localhost:3001',
+    'http://127.0.0.1:5173',
+    'http://127.0.0.1:3001',
+    'http://12.12.12.3:5173',
+    'https://dani-ai-olive.vercel.app',
+    'https://dani-ai-eph8.vercel.app',
+    /https:\/\/dani-ai.*\.vercel\.app$/
+];
+
+app.use(cors({
+    origin: function(origin, callback) {
+        // Allow requests with no origin (like mobile apps or curl)
+        if (!origin) return callback(null, true);
+        if (allowedOrigins.some(o => o instanceof RegExp ? o.test(origin) : o === origin)) {
+            callback(null, true);
+        } else {
+            console.log('Blocked origin:', origin);
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
+    methods: ["GET", "POST", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    credentials: true,
+}));
 
 app.use(express.static(path.join(__dirname, "../public")));
 app.get("/", (_req, res) => {
@@ -40,10 +59,10 @@ app.get("/api/profiles", (_req, res) => {
 
 // ── Chat ──────────────────────────────────────────────────────
 app.post("/api/chat", async (req, res) => {
-    const {message, profile = "pentest", history = []} = req.body;
+    const {message, profile = "pentest", history = [], image, hasImage} = req.body;
 
-    if (!message?.trim()) {
-        return res.status(400).json({error: "Message kosong"});
+    if (!message?.trim() && !image) {
+        return res.status(400).json({error: "Message atau gambar kosong"});
     }
 
     const key = process.env.GROQ_API_KEY;
@@ -59,7 +78,15 @@ app.post("/api/chat", async (req, res) => {
             baseURL: "https://api.groq.com/openai/v1",
         });
 
-        const messages = buildMessages(history, message, validProfile as any);
+        // Build messages dengan image jika ada
+        let fullMessage = message;
+        if (image && hasImage) {
+            fullMessage = message 
+                ? `${message}\n\n[Gambar dikirim]` 
+                : "[Gambar dikirim]";
+        }
+
+        const messages = buildMessages(history, fullMessage, validProfile as any);
 
         const completion = await client.chat.completions.create({
             model: MODEL,

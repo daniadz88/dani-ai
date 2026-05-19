@@ -1,6 +1,10 @@
-// src/lib/api.ts
+// frontend/src/lib/api.ts
 
-const BASE = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : "/api";
+// Simple detection - jangan pakai window.location untuk local
+const isLocalDev = import.meta.env.DEV;
+const BASE = isLocalDev 
+    ? 'http://localhost:3001/api'  // Local development
+    : (import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : '/api');
 
 export interface HealthResponse {
     status: string;
@@ -15,35 +19,47 @@ export interface ChatResponse {
 }
 
 export async function checkHealth(): Promise<HealthResponse> {
-    const res = await fetch(`${BASE}/health`, {
-        method: "GET",
-        headers: {"Content-Type": "application/json"},
-    });
-    if (!res.ok) throw new Error(`Health check failed: ${res.status}`);
-    return res.json();
+    try {
+        const res = await fetch(`${BASE}/health`, {
+            method: "GET",
+            headers: {"Content-Type": "application/json"},
+        });
+        if (!res.ok) throw new Error(`Health check failed: ${res.status}`);
+        return res.json();
+    } catch (error) {
+        console.error("Health check error:", error);
+        throw error;
+    }
 }
 
 export async function sendChat(
     message: string,
     profile: string,
     history: {role: string; content: string; imageUrl?: string}[],
-    imageBase64?: string
+    imageBase64?: string,
+    token?: string          // ← tambah ini
 ): Promise<ChatResponse> {
-    const payload: any = {message, profile, history};
+    const payload: any = { message, profile, history };
     if (imageBase64) {
-        payload.image = imageBase64;
-        payload.hasImage = true;
+    payload.image = imageBase64;
+    payload.hasImage = true;
+    if (imageBase64.length > 500000) payload.compress = true;
     }
-    
+
+    const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    };
+    if (token) headers["Authorization"] = `Bearer ${token}`; // ← tambah ini
+
     const res = await fetch(`${BASE}/chat`, {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify(payload),
+    method: "POST",
+    headers,
+    body: JSON.stringify(payload),
     });
-    
+
     if (!res.ok) {
-        const err = await res.json().catch(() => ({error: `HTTP ${res.status}`}));
-        throw new Error(err.error || `Request failed: ${res.status}`);
+    const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+    throw new Error(err.error || `Request failed: ${res.status}`);
     }
     return res.json();
 }
